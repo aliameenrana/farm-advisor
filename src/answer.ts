@@ -93,22 +93,55 @@ async function askGemini(env: Env, context: string, photo: Photo | null): Promis
   return JSON.parse(content) as ModelAnswer;
 }
 
-// Gemini first because it can read photos; Groq keeps text questions
-// answered when Gemini is down or out of credit. A photo has no fallback,
-// so that error goes to the caller.
+async function askClaude(env: Env, context: string, photo: Photo | null): Promise<ModelAnswer> {
+  const content: Record<string, unknown>[] = [];
+  if (photo) content.push({ type: 'image', source: { type: 'base64', media_type: photo.mime, data: toBase64(photo.bytes) } });
+  content.push({ type: 'text', text: context });
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: env.CLAUDE_MODEL ?? 'claude-sonnet-5-5',
+      max_tokens: 1500,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
+      system: SYSTEM,
+      messages: [{ role: 'user', content }],
+    }),
+  });
+  if (!res.ok) throw new Error(`claude failed: ${res.status} ${await res.text()}`);
+  const json = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = json.content?.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
+  if (!text) throw new Error('claude returned no content');
+  return JSON.parse(text) as ModelAnswer;
+}
+
+// Vision-capable providers first, in order of whichever keys are set; Groq
+// keeps text questions answered when they are down or out of credit. A
+// photo has no text-only fallback, so that error goes to the caller.
 export async function askModel(
   env: Env,
   input: { text: string | null; weather: string | null; photo: Photo | null },
 ): Promise<ModelAnswer> {
   const context = buildContext(input);
-  if (env.GEMINI_API_KEY) {
+  const providers: [string, () => Promise<ModelAnswer>][] = [];
+  if (env.ANTHROPIC_API_KEY) providers.push(['claude', () => askClaude(env, context, input.photo)]);
+  if (env.GEMINI_API_KEY) providers.push(['gemini', () => askGemini(env, context, input.photo)]);
+
+  let lastErr: unknown = null;
+  for (const [name, ask] of providers) {
     try {
-      return await askGemini(env, context, input.photo);
+      return await ask();
     } catch (err) {
-      if (input.photo) throw err;
-      console.error('gemini failed, falling back to groq', err);
+      console.error(`${name} failed`, err);
+      lastErr = err;
     }
   }
+  if (input.photo) throw lastErr ?? new Error('no vision model configured');
   if (input.photo) throw new Error('no vision model configured');
   return askGroq(env, context);
 }
