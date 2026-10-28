@@ -5,6 +5,8 @@ export interface Env {
   WHATSAPP_PHONE_NUMBER_ID: string;
   WHATSAPP_APP_SECRET: string;
   GROQ_API_KEY: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL?: string;
   // Salt for hashing phone numbers so the log never holds a raw number.
   TESTER_SALT: string;
   OFFICER_PHONE: string;

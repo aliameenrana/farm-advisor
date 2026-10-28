@@ -3,7 +3,7 @@ import { verifyMetaSignature } from './verify-signature.js';
 import { downloadMedia, markRead, sendText, sendVoice } from './whatsapp.js';
 import { transcribe } from './transcribe.js';
 import { forecast } from './weather.js';
-import { askModel, verify } from './answer.js';
+import { askModel, verify, type Photo } from './answer.js';
 import { GUIDANCE } from './guidance.js';
 import { speakUrdu } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
@@ -14,6 +14,7 @@ interface InboundMessage {
   type: string;
   text?: { body: string };
   audio?: { id: string };
+  image?: { id: string; caption?: string };
   location?: { latitude: number; longitude: number };
 }
 
@@ -69,6 +70,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   let text: string | null = null;
   let transcript: string | null = null;
   let confidence: number | null = null;
+  let photo: Photo | null = null;
 
   if (msg.type === 'audio' && msg.audio) {
     const media = await downloadMedia(env, msg.audio.id);
@@ -80,9 +82,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     }
     text = transcript = t.text;
     confidence = t.confidence;
-  } else if (msg.type === 'image') {
-    await log(env, tester, { input: 'image', outcome: 'photo_redirect' });
-    return reply(env, to, REPLY.photo(env.OFFICER_PHONE));
+  } else if (msg.type === 'image' && msg.image) {
+    photo = await downloadMedia(env, msg.image.id);
+    text = msg.image.caption ?? null;
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
     if (/^(hi|hello|salam|سلام|السلام|start)\b/i.test(text.trim()) && text.length < 30) {
@@ -99,7 +101,15 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     .first<{ lat: number | null; lon: number | null }>();
   const weather = place?.lat != null && place.lon != null ? await forecast(place.lat, place.lon).catch(() => null) : null;
 
-  const ans = await askModel(env, { text: text!, weather });
+  let ans;
+  try {
+    ans = await askModel(env, { text, weather, photo });
+  } catch (err) {
+    if (!photo) throw err;
+    console.error('photo answer failed', err);
+    await log(env, tester, { input, outcome: 'photo_redirect' });
+    return reply(env, to, REPLY.photo(env.OFFICER_PHONE));
+  }
   const checked = verify(ans, GUIDANCE, weather);
 
   if (!checked.ok) {
@@ -117,7 +127,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
 
   const parts = [ans.answer.trim()];
   if (/\d|[۰-۹]/.test(ans.answer) && (ans.topic === 'fertiliser' || ans.topic === 'disease')) parts.push(REPLY.readLabel);
-  if (ans.topic === 'disease') parts.push(REPLY.photoCheck(env.OFFICER_PHONE));
+  if (photo || ans.topic === 'disease') parts.push(REPLY.photoCheck(env.OFFICER_PHONE));
   // The source line goes in the text only; read aloud it would be noise.
   const spoken = parts.join(' ');
   const written = `${spoken}\n\n${sourceLine(checked.sources)}`;
