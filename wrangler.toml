@@ -5,6 +5,8 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
+WHATSAPP_PHONE_NUMBER_ID = "1326703063865933"
+WHATSAPP_BUSINESS_ACCOUNT_ID = "1809425623839959"
 MIN_CONFIDENCE = "-0.9"
 ANSWER_MODEL = "claude-sonnet-5-5"
 AZURE_SPEECH_REGION = "southeastasia"
