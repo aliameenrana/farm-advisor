@@ -1,0 +1,15 @@
+name = "farm-advisor"
+account_id = "77cf715445ca8f2b93cbc57d50a8513d"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+MIN_CONFIDENCE = "-0.9"
+ANSWER_MODEL = "claude-sonnet-5-5"
+AZURE_SPEECH_REGION = "southeastasia"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "farm-advisor"
+database_id = "0699a97d-70da-4270-b438-e559dc2860d6"

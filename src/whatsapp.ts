@@ -1,0 +1,52 @@
+import type { Env } from './env.js';
+
+const GRAPH = 'https://graph.facebook.com/v22.0';
+
+async function post(env: Env, to: string, message: Record<string, unknown>): Promise<boolean> {
+  const res = await fetch(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, ...message }),
+  });
+  if (!res.ok) console.error('whatsapp send failed', res.status, await res.text());
+  return res.ok;
+}
+
+export function sendText(env: Env, to: string, body: string): Promise<boolean> {
+  return post(env, to, { type: 'text', text: { body: body.slice(0, 4000) } });
+}
+
+// WhatsApp only shows audio as a playable voice note when it is OGG/Opus.
+export async function sendVoice(env: Env, to: string, ogg: ArrayBuffer): Promise<boolean> {
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', 'audio/ogg');
+  form.append('file', new Blob([ogg], { type: 'audio/ogg' }), 'reply.ogg');
+  const res = await fetch(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => ({}))) as { id?: string };
+  if (!json.id) {
+    console.error('whatsapp media upload failed', res.status, json);
+    return false;
+  }
+  return post(env, to, { type: 'audio', audio: { id: json.id } });
+}
+
+// The webhook only carries a media id; the bytes need two authenticated fetches.
+export async function downloadMedia(env: Env, mediaId: string): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
+  const auth = { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}` };
+  const meta = await fetch(`${GRAPH}/${mediaId}`, { headers: auth });
+  if (!meta.ok) return null;
+  const { url, mime_type } = (await meta.json()) as { url?: string; mime_type?: string };
+  if (!url) return null;
+  const file = await fetch(url, { headers: auth });
+  if (!file.ok) return null;
+  return { bytes: await file.arrayBuffer(), mime: mime_type ?? 'application/octet-stream' };
+}
+
+export function markRead(env: Env, messageId: string): Promise<boolean> {
+  return post(env, '', { status: 'read', message_id: messageId, typing_indicator: { type: 'text' } });
+}
