@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { Env } from './env.js';
 import { GUIDANCE, normalize, type Chunk } from './guidance.js';
 
@@ -42,9 +41,8 @@ Rules you never break:
 4. status "answer": every fact in your answer is supported by a chunk. For each chunk you used, copy a supporting passage from it EXACTLY, character for character, into citations.quote.
 5. Never name a pesticide or fertiliser brand, or a shop.
 6. Never give a chemical dose or quantity unless a chunk states it, and then copy its numbers exactly.
-7. A photo can only ever suggest what something "may be" (ہو سکتا ہے). Never a diagnosis.
-8. Weather numbers may be used for timing of spraying and irrigation, but the advice itself must come from a chunk.
-9. Guidance written for other districts: say so in the answer if it matters.
+7. Weather numbers may be used for timing of spraying and irrigation, but the advice itself must come from a chunk.
+8. Guidance written for other districts: say so in the answer if it matters.
 
 Write "answer" in simple spoken Urdu, at most 3 short sentences, as if speaking to a farmer who may not read. No lists, no symbols, no English words if an Urdu one exists. Do not mention sources; they are added separately. "question" is the farmer's question restated clearly in Urdu.`;
 
@@ -53,50 +51,30 @@ function guidanceBlock(chunks: Chunk[]): string {
   return chunks.map((c) => `<chunk id="${c.id}" source="${c.source}, ${c.page}">\n${c.text}\n</chunk>`).join('\n');
 }
 
-export async function askModel(
-  env: Env,
-  input: { text: string | null; image: { bytes: ArrayBuffer; mime: string } | null; weather: string | null },
-): Promise<ModelAnswer> {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+export async function askModel(env: Env, input: { text: string; weather: string | null }): Promise<ModelAnswer> {
   const context =
     `${guidanceBlock(GUIDANCE)}\n\n<weather>\n${input.weather ?? 'Not available: the farmer has not shared a location.'}\n</weather>\n\n` +
-    `<farmer_message>\n${input.text ?? '(no words, photo only)'}\n</farmer_message>`;
+    `<farmer_message>\n${input.text}\n</farmer_message>`;
 
-  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
-  if (input.image) {
-    content.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: input.image.mime as 'image/jpeg',
-        data: arrayBufferToBase64(input.image.bytes),
-      },
-    });
-  }
-  content.push({ type: 'text', text: context });
-
-  const params = {
-    model: env.ANSWER_MODEL ?? 'claude-sonnet-5-5',
-    max_tokens: 1500,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
-    system: SYSTEM,
-    messages: [{ role: 'user', content }],
-  };
-  const message = await client.beta.messages.create(
-    params as unknown as Parameters<typeof client.beta.messages.create>[0],
-  );
-  const text = (message as Anthropic.Beta.BetaMessage).content
-    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
-  return JSON.parse(text) as ModelAnswer;
-}
-
-function arrayBufferToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: env.ANSWER_MODEL ?? 'openai/gpt-oss-120b',
+      max_completion_tokens: 2000,
+      reasoning_effort: 'medium',
+      response_format: { type: 'json_schema', json_schema: { name: 'answer', strict: true, schema: SCHEMA } },
+      messages: [
+        { role: 'system', content: SYSTEM },
+        { role: 'user', content: context },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`answer model failed: ${res.status} ${await res.text()}`);
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const content = json.choices?.[0]?.message?.content;
+  if (!content) throw new Error('answer model returned no content');
+  return JSON.parse(content) as ModelAnswer;
 }
 
 const DIGITS = /[0-9۰-۹٠-٩]+/g;

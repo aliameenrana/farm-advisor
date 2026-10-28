@@ -14,7 +14,6 @@ interface InboundMessage {
   type: string;
   text?: { body: string };
   audio?: { id: string };
-  image?: { id: string; caption?: string };
   location?: { latitude: number; longitude: number };
 }
 
@@ -70,7 +69,6 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   let text: string | null = null;
   let transcript: string | null = null;
   let confidence: number | null = null;
-  let image: { bytes: ArrayBuffer; mime: string } | null = null;
 
   if (msg.type === 'audio' && msg.audio) {
     const media = await downloadMedia(env, msg.audio.id);
@@ -82,9 +80,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     }
     text = transcript = t.text;
     confidence = t.confidence;
-  } else if (msg.type === 'image' && msg.image) {
-    image = await downloadMedia(env, msg.image.id);
-    text = msg.image.caption ?? null;
+  } else if (msg.type === 'image') {
+    await log(env, tester, { input: 'image', outcome: 'photo_redirect' });
+    return reply(env, to, REPLY.photo(env.OFFICER_PHONE));
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
     if (/^(hi|hello|salam|سلام|السلام|start)\b/i.test(text.trim()) && text.length < 30) {
@@ -101,7 +99,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     .first<{ lat: number | null; lon: number | null }>();
   const weather = place?.lat != null && place.lon != null ? await forecast(place.lat, place.lon).catch(() => null) : null;
 
-  const ans = await askModel(env, { text, image, weather });
+  const ans = await askModel(env, { text: text!, weather });
   const checked = verify(ans, GUIDANCE, weather);
 
   if (!checked.ok) {
@@ -119,7 +117,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
 
   const parts = [ans.answer.trim()];
   if (/\d|[۰-۹]/.test(ans.answer) && (ans.topic === 'fertiliser' || ans.topic === 'disease')) parts.push(REPLY.readLabel);
-  if (image || ans.topic === 'disease') parts.push(REPLY.photoCheck(env.OFFICER_PHONE));
+  if (ans.topic === 'disease') parts.push(REPLY.photoCheck(env.OFFICER_PHONE));
   // The source line goes in the text only; read aloud it would be noise.
   const spoken = parts.join(' ');
   const written = `${spoken}\n\n${sourceLine(checked.sources)}`;

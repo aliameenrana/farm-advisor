@@ -8,7 +8,8 @@ compatibility_flags = ["nodejs_compat"]
 WHATSAPP_PHONE_NUMBER_ID = "1326703063865933"
 WHATSAPP_BUSINESS_ACCOUNT_ID = "1809425623839959"
 MIN_CONFIDENCE = "-0.9"
-ANSWER_MODEL = "claude-sonnet-5-5"
+ANSWER_MODEL = "openai/gpt-oss-120b"
+OFFICER_PHONE = "+920000000000"
 AZURE_SPEECH_REGION = "southeastasia"
 
 [[d1_databases]]
