@@ -1,1 +1,86 @@
-[]
+[
+  {
+    "id": "pd-seasons",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.1",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Punjab grows three potato crops: a spring crop and an autumn crop in the plains, and a summer crop in the hilly areas."
+  },
+  {
+    "id": "pd-districts",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.2",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "About 75% of Punjab's potatoes come from Kasur, Okara, Depalpur, Sahiwal and Pakpattan."
+  },
+  {
+    "id": "pd-sowing",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.3",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "All varieties released by the Potato Research Institute, Sahiwal, are sown in the second half of October."
+  },
+  {
+    "id": "pd-gujranwala",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.4",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Two of the Potato Research Institute, Sahiwal's varieties are recommended for Gujranwala (and Sialkot): Sialkot Red (SH-1035), released 2018. Red skin. Average yield 25.8 tonnes per hectare. High yield, climate resilient, tolerant of frost and disease. SH-5, released 2006. Red skin. Average yield 35.0 tonnes per hectare. Late maturing, tolerant of frost and disease."
+  },
+  {
+    "id": "pd-variety-sahiwal-red",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Sahiwal Red (FD 76-67): released 2019. Red skin. Average yield 28.4 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
+  },
+  {
+    "id": "pd-variety-sahiwal-white",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Sahiwal White (FD 73-110): released 2019. White skin. Average yield 30.5 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
+  },
+  {
+    "id": "pd-variety-cosmo",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Cosmo (FD 78-51): released 2019. Yellow skin. Average yield 29.9 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
+  },
+  {
+    "id": "pd-variety-sialkot-red",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Sialkot Red (SH-1035): released 2018. Red skin. Average yield 25.8 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
+  },
+  {
+    "id": "pd-variety-sadaf",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Sadaf (FD 78-36): released 2016. White skin. Average yield 26.6 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: climate resilient, frost and disease tolerant, good for processing."
+  },
+  {
+    "id": "pd-variety-ruby",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "Ruby (FD 63-1): released 2016. Red skin. Average yield 27.3 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant, good for processing."
+  },
+  {
+    "id": "pd-variety-pri-red",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "PRI-Red (FD 70-1): released 2013. Red skin. Average yield 34.2 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
+  },
+  {
+    "id": "pd-variety-sh-5",
+    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+    "page": "حصہ 1.5",
+    "url": "https://agripunjab.punjab.gov.pk/node/9632",
+    "text": "SH-5: released 2006. Red skin. Average yield 35.0 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
+  }
+]
