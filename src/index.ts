@@ -7,6 +7,7 @@ import { GUIDANCE } from './guidance.js';
 import { speak, speakCached } from './tts.js';
 import { FIXED, OFFICER_LINE, sourceLine, type Fixed, type Lang } from './replies.js';
 import { placeName } from './weather.js';
+import { pakistaniPunjabi } from './punjabi.js';
 
 const HISTORY_TURNS = 6;
 
@@ -127,10 +128,11 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   // The source line goes in the text only; read aloud it would be noise.
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
-  const punjabi =
-    ans.spoken_language === 'pa' && ans.spoken_text?.trim()
-      ? [ans.spoken_text.trim(), ...(ans.needs_officer || photo ? [OFFICER_LINE.punjabi(env.OFFICER_PHONE)] : [])].join(' ')
-      : undefined;
+  const guarded = ans.spoken_language === 'pa' && ans.spoken_text?.trim() ? pakistaniPunjabi(ans.spoken_text.trim()) : null;
+  if (guarded?.replaced.length) ans.steps.push(`punjabi-guard: ${guarded.replaced.join(',')}`);
+  const punjabi = guarded
+    ? [guarded.text, ...(ans.needs_officer || photo ? [OFFICER_LINE.punjabi(env.OFFICER_PHONE)] : [])].join(' ')
+    : undefined;
   const audio = await speak(env, spoken, ans.tone, punjabi);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, written);

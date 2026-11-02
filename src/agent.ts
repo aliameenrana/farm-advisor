@@ -28,6 +28,7 @@ export interface AgentReply {
   needs_officer: boolean;
   tone?: Tone;
   spoken_language?: 'ur' | 'pa';
+  punjabi_shahmukhi?: string;
   spoken_text?: string;
   steps: string[];
 }
@@ -60,12 +61,12 @@ Situations you will meet (not a complete list; use judgment)
 - No saved location: if this is the start of the conversation, after answering, ask once for the farm's location via WhatsApp's location button, saying it is for weather advice. If they ask about weather with no place and no saved location, ask for it. Do not keep asking every turn.
 - Frustration or complaints: acknowledge it in a few words, then help.
 - Energy: match the person's mood. An excited greeting ("assalamoalaikuuuum!!") gets an equally happy, lively reply; a tired or worried message gets a calm, gentle one. Never match anger or rudeness: stay calm and kind. Emergencies are always calm and urgent, never cheerful. Always respectful; many farmers are elders. Pick tone to match.
-- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), all values in one call, and say it is a conversion. A question about yield alone is answered in the guidance's own units.
+- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds. Yield conversions are listed below; use convert_units only for other values, all in one call. Say it is a conversion. A question about yield alone is answered in the guidance's own units.
 
 Language
 - Reply in the language they used. Transcripts of Punjabi voice notes come out in Urdu script with Punjabi words (ڈی، کیہڑی، اے، دا، نوں، لئی، چنگی), so judge by the words, not the script.
-- Urdu message: spoken_language "ur", and spoken_text is empty.
-- Punjabi message: spoken_language "pa", and spoken_text is the same reply in natural spoken Punjabi as in Gujranwala (Majhi), written in Gurmukhi script so the voice can read it. Same facts, same numbers as text, nothing added.
+- Urdu message: spoken_language "ur"; punjabi_shahmukhi and spoken_text are empty.
+- Punjabi message: spoken_language "pa". First write punjabi_shahmukhi: the reply in Pakistani Punjabi as spoken in Gujranwala, in Shahmukhi, using the words a Pakistani farmer uses (فی, ایکڑ, من, مہربانی, شکریہ, زراعت, پیداوار, مشورہ, مسئلہ, ویلا). Then spoken_text: that exact Shahmukhi text transliterated letter by letter into Gurmukhi for the voice. Transliterate, never translate: no Indian or Sanskrit-derived words (ਪ੍ਰਤੀ, ਕਿਰਪਾ, ਧੰਨਵਾਦ, ਖੇਤੀਬਾੜੀ, ਸਮੱਸਿਆ, ਉਪਜ, ਜਾਣਕਾਰੀ, ਵਿਭਾਗ). Same facts and numbers as text, nothing added.
 - text is always Urdu, for the farm owner to read.
 
 How to speak
@@ -73,12 +74,26 @@ How to speak
 - Do not mention sources or section numbers in the text; they are added for you.
 - Never mention the agriculture officer or their number yourself; set needs_officer and a line is added for you. Leave needs_officer false for emergencies and greetings.`;
 
+const PER_KG: Record<string, number> = { kg: 1, tonne: 1000, maund: 40 };
+const PER_HA: Record<string, number> = { hectare: 1, acre: 0.40468564224 };
+
+// Every tonnes-per-hectare figure in the guidance, converted once here so a
+// yield-in-acres question needs no second model call.
+const YIELD_CONVERSIONS = [
+  ...new Set(GUIDANCE.flatMap((c) => [...c.text.matchAll(/([0-9.]+) tonnes per hectare/g)].map((m) => Number(m[1])))),
+]
+  .map((t) => `${t} tonnes per hectare = ${convertUnits(t, 't_per_ha', 'maund_per_acre')} maunds per acre`)
+  .join('\n');
+
 // Fixed per deploy, so every request starts with the same prefix and Gemini
 // can reuse its cache across farmers and turns.
 const SYSTEM = `${RULES}
 
 Official guidance (cite by id):
-${GUIDANCE.length ? GUIDANCE.map((c) => `[${c.id}] ${c.text}`).join('\n') : '(none loaded)'}`;
+${GUIDANCE.length ? GUIDANCE.map((c) => `[${c.id}] ${c.text}`).join('\n') : '(none loaded)'}
+
+Yield conversions, computed exactly (1 maund = 40 kg). Use these instead of calling convert_units; say they are conversions:
+${YIELD_CONVERSIONS}`;
 
 interface ToolDef {
   name: string;
@@ -110,7 +125,7 @@ const TOOLS: ToolDef[] = [
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['text', 'citations', 'topic', 'needs_officer', 'tone', 'spoken_language', 'spoken_text'],
+      required: ['text', 'citations', 'topic', 'needs_officer', 'tone', 'spoken_language', 'punjabi_shahmukhi', 'spoken_text'],
       properties: {
         text: { type: 'string', description: 'Spoken Urdu reply.' },
         citations: {
@@ -128,15 +143,14 @@ const TOOLS: ToolDef[] = [
         },
         needs_officer: { type: 'boolean' },
         spoken_language: { type: 'string', enum: ['ur', 'pa'] },
-        spoken_text: { type: 'string', description: 'Gurmukhi Punjabi version of text when spoken_language is pa, else empty.' },
+        punjabi_shahmukhi: { type: 'string', description: 'Pakistani Punjabi reply in Shahmukhi when spoken_language is pa, else empty.' },
+        spoken_text: { type: 'string', description: 'punjabi_shahmukhi transliterated letter by letter into Gurmukhi, else empty.' },
         tone: { type: 'string', enum: ['cheerful', 'warm', 'calm', 'concerned', 'urgent'], description: 'How the reply should sound when spoken.' },
       },
     },
   },
 ];
 
-const PER_KG: Record<string, number> = { kg: 1, tonne: 1000, maund: 40 };
-const PER_HA: Record<string, number> = { hectare: 1, acre: 0.40468564224 };
 
 export function convertUnits(value: number, from: string, to: string): number | null {
   const round = (n: number) => Math.round(n * 100) / 100;
@@ -303,7 +317,7 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
   const messages: unknown[] = [...p.history(ctx.history), p.userMessage(`[${where}${start}]\n${ctx.message}`, ctx.photo)];
   const steps: string[] = [];
   // 1122 is Punjab's emergency service, named by the safety rule in the prompt.
-  let toolOutputs = `${env.OFFICER_PHONE} 1122`;
+  let toolOutputs = `${env.OFFICER_PHONE} 1122\n${YIELD_CONVERSIONS}`;
   let retried = false;
   const total: Usage = { input: 0, cached: 0, output: 0, thinking: 0 };
   const done = (r: Omit<AgentReply, 'steps'>): AgentReply => {
@@ -325,7 +339,7 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
       if (call.name === 'reply') {
         const input = call.input as AgentReplyInput;
         const check = verifyReply(
-          { text: `${input.text}\n${input.spoken_language === 'pa' ? (input.spoken_text ?? '') : ''}`, citations: input.citations },
+          { text: `${input.text}\n${input.spoken_language === 'pa' ? `${input.punjabi_shahmukhi ?? ''}\n${input.spoken_text ?? ''}` : ''}`, citations: input.citations },
           GUIDANCE,
           toolOutputs,
         );
