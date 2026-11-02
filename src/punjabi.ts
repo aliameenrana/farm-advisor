@@ -23,16 +23,22 @@ const PAKISTANI: [string, string][] = [
   ['ਕਿਰਪਾ', 'ਮਿਹਰਬਾਨੀ'],
   ['ਪ੍ਰਤੀ', 'ਫ਼ੀ'],
   ['ਉਪਜ', 'ਪੈਦਾਵਾਰ'],
-  ['ਸਮਾਂ', 'ਵੇਲਾ'],
 ];
+
+// Name stems end in ਲ and may take an ending (ਗੁਜਰਾਂਵਾਲਾ, ਗੁਜਰਾਂਵਾਲੇ), so they
+// only need a word start; every other entry must be a whole word. Matching
+// inside words once turned ਕਿਸਮਾਂ into ਕਿਵੇਲਾ.
+const LETTER = '[\\u0A00-\\u0A7F]';
 
 export function pakistaniPunjabi(gurmukhi: string): { text: string; replaced: string[] } {
   const replaced: string[] = [];
   let text = gurmukhi;
-  for (const [indian, pakistani] of PAKISTANI) {
-    if (text.includes(indian)) {
-      text = text.split(indian).join(pakistani);
-      replaced.push(indian);
+  for (const [from, to] of PAKISTANI) {
+    const stem = from.endsWith('ਲ');
+    const re = new RegExp(`(?<!${LETTER})${from}${stem ? '' : `(?!${LETTER})`}`, 'g');
+    if (re.test(text)) {
+      text = text.replace(re, to);
+      replaced.push(from);
     }
   }
   return { text, replaced };
