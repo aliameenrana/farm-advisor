@@ -10,6 +10,9 @@ export interface Env {
   // Salt for hashing phone numbers so the log never holds a raw number.
   TESTER_SALT: string;
   OFFICER_PHONE: string;
+  TTS_PROVIDER?: string;
+  GEMINI_TTS_MODEL?: string;
+  GEMINI_TTS_VOICE?: string;
   AZURE_SPEECH_KEY?: string;
   AZURE_SPEECH_REGION?: string;
   // Whisper avg_logprob below this is treated as "didn't understand".

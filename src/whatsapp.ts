@@ -16,12 +16,13 @@ export function sendText(env: Env, to: string, body: string): Promise<boolean> {
   return post(env, to, { type: 'text', text: { body: body.slice(0, 4000) } });
 }
 
-// WhatsApp only shows audio as a playable voice note when it is OGG/Opus.
-export async function sendVoice(env: Env, to: string, ogg: ArrayBuffer): Promise<boolean> {
+// WhatsApp only shows audio as a voice note when it is OGG/Opus; MP3 arrives
+// as a playable audio file.
+export async function sendVoice(env: Env, to: string, speech: { bytes: ArrayBuffer; mime: string }): Promise<boolean> {
   const form = new FormData();
   form.append('messaging_product', 'whatsapp');
-  form.append('type', 'audio/ogg');
-  form.append('file', new Blob([ogg], { type: 'audio/ogg' }), 'reply.ogg');
+  form.append('type', speech.mime);
+  form.append('file', new Blob([speech.bytes], { type: speech.mime }), speech.mime === 'audio/mpeg' ? 'reply.mp3' : 'reply.ogg');
   const res = await fetch(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}` },

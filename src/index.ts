@@ -4,7 +4,7 @@ import { downloadMedia, markRead, sendText, sendVoice } from './whatsapp.js';
 import { transcribe } from './transcribe.js';
 import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
-import { speakUrdu } from './tts.js';
+import { speak } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
 
 const HISTORY_TURNS = 6;
@@ -45,7 +45,7 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
 // Workers who cannot read need every reply as a voice note; the text goes too
 // so the farm owner can check it.
 async function reply(env: Env, to: string, text: string): Promise<void> {
-  const audio = await speakUrdu(env, text);
+  const audio = await speak(env, text);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, text);
 }
@@ -121,7 +121,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   // The source line goes in the text only; read aloud it would be noise.
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
-  const audio = await speakUrdu(env, spoken);
+  const audio = await speak(env, spoken);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, written);
 
