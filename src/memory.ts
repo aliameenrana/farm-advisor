@@ -54,7 +54,7 @@ async function summarise(env: Env, input: string): Promise<string> {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: input }] }],
-      generationConfig: { maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
+      generationConfig: { maxOutputTokens: 300, thinkingConfig: { thinkingLevel: 'minimal' } },
     }),
   });
   if (!res.ok) throw new Error(`summary ${res.status}: ${(await res.text()).slice(0, 300)}`);
