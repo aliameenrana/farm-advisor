@@ -33,3 +33,11 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS messages_tester ON messages (tester_hash, id);
+
+-- Spoken audio for fixed replies, keyed by voice setting and exact text.
+CREATE TABLE IF NOT EXISTS tts_cache (
+  key TEXT PRIMARY KEY,
+  mime TEXT NOT NULL,
+  audio BLOB NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

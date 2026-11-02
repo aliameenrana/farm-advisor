@@ -4,7 +4,7 @@ import { downloadMedia, markRead, sendText, sendVoice } from './whatsapp.js';
 import { transcribe } from './transcribe.js';
 import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
-import { speak } from './tts.js';
+import { speak, speakCached } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
 import { placeName } from './weather.js';
 
@@ -43,11 +43,12 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
     .run();
 }
 
-// Workers who cannot read need every reply as a voice note; the text goes too
-// so the farm owner can check it.
+// Fixed replies only, sent from code paths the model never chooses. Workers
+// who cannot read need them spoken; the text goes too so the farm owner can
+// check it.
 async function reply(env: Env, to: string, text: string): Promise<void> {
   await sendText(env, to, text);
-  const audio = await speak(env, text);
+  const audio = await speakCached(env, text);
   if (audio) await sendVoice(env, to, audio);
 }
 
@@ -181,7 +182,7 @@ export default {
           await handle(env, job.body);
         } catch (err) {
           console.error('handle failed', err);
-          await sendText(env, job.body.from, REPLY.error).catch(() => undefined);
+          await reply(env, job.body.from, REPLY.error).catch(() => undefined);
         }
         job.ack();
       }),
