@@ -49,8 +49,9 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
 async function reply(env: Env, to: string, copies: Record<Lang, Fixed>, lang: Lang): Promise<void> {
   const msg = copies[lang];
   const audio = await speakCached(env, msg.spoken, lang);
-  if (audio) await sendVoice(env, to, audio);
+  const voiceFailed = audio ? await sendVoice(env, to, audio).then(() => null, (e: unknown) => e) : null;
   await sendText(env, to, msg.text);
+  if (voiceFailed) throw voiceFailed;
 }
 
 async function handle(env: Env, msg: InboundMessage): Promise<void> {
@@ -135,8 +136,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     : undefined;
   const audio = await speak(env, spoken, ans.tone, punjabi);
   ans.steps.push(`voice: ${audio?.provider ?? 'none'}`);
-  if (audio) await sendVoice(env, to, audio);
+  const voiceFailed = audio ? await sendVoice(env, to, audio).then(() => null, (e: unknown) => e) : null;
   await sendText(env, to, written);
+  if (voiceFailed) throw voiceFailed;
 
   await env.DB.batch([
     env.DB.prepare(
@@ -195,7 +197,11 @@ export default {
           await handle(env, job.body);
         } catch (err) {
           console.error('handle failed', err);
-          await reply(env, job.body.from, FIXED.error, 'ur').catch(() => undefined);
+          const sent = await reply(env, job.body.from, FIXED.error, 'ur').then(() => '', (e: unknown) => `; error reply failed: ${String(e)}`);
+          await log(env, await hashNumber(env, job.body.from), {
+            input: job.body.type,
+            outcome: `failed: ${String(err).slice(0, 400)}${sent.slice(0, 400)}`,
+          }).catch((e) => console.error('log failed', e));
         }
         job.ack();
       }),

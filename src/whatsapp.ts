@@ -8,8 +8,10 @@ async function post(env: Env, to: string, message: Record<string, unknown>): Pro
     headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', ...(to ? { to } : {}), ...message }),
   });
-  if (!res.ok) console.error('whatsapp send failed', res.status, await res.text());
-  return res.ok;
+  // Meta's refusal is the only clue when a farmer gets nothing, so it is
+  // raised for the caller to record rather than printed and dropped.
+  if (!res.ok) throw new Error(`whatsapp ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return true;
 }
 
 export function sendText(env: Env, to: string, body: string): Promise<boolean> {
