@@ -71,14 +71,20 @@ const DELIVERY: Record<Tone, string> = {
   urgent: 'calmly but urgently, clear and firm, without any cheerfulness',
 };
 
+// Gemini's speech model now and then answers without audio; one retry
+// usually gets it before falling back to Azure's voice.
 async function gemini(env: Env, text: string, tone: Tone = 'warm', lang: 'ur' | 'pa' = 'ur'): Promise<Speech | null> {
+  return (await geminiOnce(env, text, tone, lang)) ?? geminiOnce(env, text, tone, lang);
+}
+
+async function geminiOnce(env: Env, text: string, tone: Tone, lang: 'ur' | 'pa'): Promise<Speech | null> {
   if (!env.GEMINI_API_KEY) return null;
   const model = env.GEMINI_TTS_MODEL ?? 'gemini-2.5-flash-preview-tts';
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Speaker: a Pakistani man, 35 to 40 years old, with a mature, steady male voice. Read this aloud ${lang === 'pa' ? 'in Punjabi as spoken in Gujranwala, Pakistan' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
+      contents: [{ parts: [{ text: `Speaker: a Pakistani man, 35 to 40 years old, with a mature, steady male voice. Read this aloud ${lang === 'pa' ? 'in Pakistani Punjabi as spoken in Gujranwala (the text is in Shahmukhi script)' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_TTS_VOICE ?? 'Charon' } } },
@@ -92,7 +98,7 @@ async function gemini(env: Env, text: string, tone: Tone = 'warm', lang: 'ur' | 
   const json = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { mimeType: string; data: string } }[] } }[] };
   const audio = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
   if (!audio) {
-    console.error('gemini tts returned no audio');
+    console.error('gemini tts returned no audio', JSON.stringify(json).slice(0, 600));
     return null;
   }
   const rate = Number(/rate=(\d+)/.exec(audio.mimeType)?.[1] ?? 24000);
