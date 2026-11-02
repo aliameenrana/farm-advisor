@@ -51,12 +51,12 @@ Situations you will meet (not a complete list; use judgment)
 - Guidance written for other districts: say it is the department's general guidance and Gujranwala may differ when that matters.
 - No location yet and they ask about weather: ask them to share their farm's location once with WhatsApp's location button.
 - Frustration or complaints: acknowledge it in a few words, then help.
-- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only if asked or clearly needed, and say it is a conversion.
+- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only if asked or clearly needed, always with convert_units (t_per_ha to maund_per_acre), and say it is a conversion.
 
 How to speak
 - Simple spoken Urdu in Urdu script, the way you would talk to a farmer in person. Short sentences, 1 to 4 of them. No lists, no symbols, no English words if an Urdu one exists. Numbers as digits.
 - Do not mention sources or section numbers in the text; they are added for you.
-- Do not repeat the officer's number; set needs_officer and it is added.`;
+- Never mention the agriculture officer or their number yourself; set needs_officer and a line is added for you. Leave needs_officer false for emergencies and greetings.`;
 
 interface ToolDef {
   name: string;
@@ -168,8 +168,9 @@ interface ToolCall {
 interface Provider {
   name: string;
   step(messages: unknown[]): Promise<{ calls: ToolCall[]; assistant: unknown }>;
-  toolResults(results: { id: string; content: string }[]): unknown[];
+  toolResults(results: { id: string; name: string; content: string }[]): unknown[];
   userMessage(text: string, photo: Photo | null): unknown;
+  history(turns: Turn[]): unknown[];
 }
 
 function toBase64(buf: ArrayBuffer): string {
@@ -179,39 +180,48 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(s);
 }
 
-function claude(env: Env): Provider {
+// Gemini 3 attaches thought signatures to function calls; the model's turn
+// must be sent back unmodified or the next step is rejected.
+function gemini(env: Env): Provider {
   return {
-    name: 'claude',
+    name: 'gemini',
     async step(messages) {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const model = env.GEMINI_MODEL ?? 'gemini-flash-latest';
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
-        headers: { 'x-api-key': env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+        headers: { 'x-goog-api-key': env.GEMINI_API_KEY!, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: env.CLAUDE_MODEL ?? 'claude-sonnet-5-5',
-          max_tokens: 1500,
-          system: SYSTEM,
-          tools: TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.schema })),
-          tool_choice: { type: 'any' },
-          messages,
+          system_instruction: { parts: [{ text: SYSTEM }] },
+          contents: messages,
+          tools: [{ functionDeclarations: TOOLS.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.schema })) }],
+          toolConfig: { functionCallingConfig: { mode: 'ANY' } },
         }),
       });
-      if (!res.ok) throw new Error(`claude ${res.status}: ${await res.text()}`);
-      const json = (await res.json()) as { content: { type: string; id?: string; name?: string; input?: Record<string, unknown> }[] };
-      const calls = json.content
-        .filter((b) => b.type === 'tool_use')
-        .map((b) => ({ id: b.id!, name: b.name!, input: b.input ?? {} }));
-      return { calls, assistant: { role: 'assistant', content: json.content } };
+      if (!res.ok) throw new Error(`gemini ${res.status}: ${await res.text()}`);
+      const json = (await res.json()) as {
+        candidates?: { content?: { role: string; parts?: { functionCall?: { id?: string; name: string; args?: Record<string, unknown> } }[] } }[];
+      };
+      const content = json.candidates?.[0]?.content;
+      if (!content) throw new Error('gemini returned no content');
+      const calls = (content.parts ?? [])
+        .filter((p) => p.functionCall)
+        .map((p, i) => ({ id: p.functionCall!.id ?? `${p.functionCall!.name}:${i}`, name: p.functionCall!.name, input: p.functionCall!.args ?? {} }));
+      return { calls, assistant: content };
     },
     toolResults: (results) => [
-      { role: 'user', content: results.map((r) => ({ type: 'tool_result', tool_use_id: r.id, content: r.content })) },
+      {
+        role: 'user',
+        parts: results.map((r) => {
+          const name = r.id.includes(':') ? r.id.split(':')[0]! : r.name;
+          return { functionResponse: { ...(r.id.includes(':') ? {} : { id: r.id }), name, response: { content: r.content } } };
+        }),
+      },
     ],
     userMessage: (text, photo) => ({
       role: 'user',
-      content: [
-        ...(photo ? [{ type: 'image', source: { type: 'base64', media_type: photo.mime, data: toBase64(photo.bytes) } }] : []),
-        { type: 'text', text },
-      ],
+      parts: [...(photo ? [{ inline_data: { mime_type: photo.mime, data: toBase64(photo.bytes) } }] : []), { text }],
     }),
+    history: (turns) => turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
   };
 }
 
@@ -240,6 +250,7 @@ function groq(env: Env): Provider {
     },
     toolResults: (results) => results.map((r) => ({ role: 'tool', tool_call_id: r.id, content: r.content })),
     userMessage: (text) => ({ role: 'user', content: text }),
+    history: (turns) => turns.map((t) => ({ role: t.role, content: t.content })),
   };
 }
 
@@ -253,7 +264,7 @@ interface AgentContext {
 }
 
 async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentReply> {
-  const messages: unknown[] = [...ctx.history.map((t) => ({ role: t.role, content: t.content })), p.userMessage(ctx.message, ctx.photo)];
+  const messages: unknown[] = [...p.history(ctx.history), p.userMessage(ctx.message, ctx.photo)];
   const steps: string[] = [];
   // 1122 is Punjab's emergency service, named by the safety rule in the prompt.
   let toolOutputs = `${env.OFFICER_PHONE} 1122`;
@@ -264,7 +275,7 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
     messages.push(assistant);
     if (!calls.length) throw new Error('model made no tool call');
 
-    const results: { id: string; content: string }[] = [];
+    const results: { id: string; name: string; content: string }[] = [];
     for (const call of calls) {
       steps.push(call.name);
       if (call.name === 'reply') {
@@ -276,7 +287,8 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
         steps.push(`rejected: ${check.reason}`);
         results.push({
           id: call.id,
-          content: `Not sent. ${check.reason}. Copy quotes exactly from read_guidance, and remove any number you cannot trace to a cited quote or a tool result. If the guidance does not support the claim, say it is not covered.`,
+          name: call.name,
+          content: `Not sent. ${check.reason}. If that number is a unit conversion, call convert_units and use its result. Otherwise copy quotes exactly from read_guidance, and remove any number you cannot trace to a cited quote or a tool result. If the guidance does not support the claim, say it is not covered.`,
         });
         continue;
       }
@@ -295,17 +307,17 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
         out = `Unknown tool ${call.name}.`;
       }
       toolOutputs += '\n' + out;
-      results.push({ id: call.id, content: out });
+      results.push({ id: call.id, name: call.name, content: out });
     }
     messages.push(...p.toolResults(results));
   }
   throw new Error('agent ran out of steps');
 }
 
-// Groq cannot see photos, so a photo turn has only Claude to try.
+// Groq cannot see photos, so a photo turn has only Gemini to try.
 export async function runAgent(env: Env, ctx: AgentContext): Promise<AgentReply> {
   const providers: Provider[] = [];
-  if (env.ANTHROPIC_API_KEY) providers.push(claude(env));
+  if (env.GEMINI_API_KEY) providers.push(gemini(env));
   if (!ctx.photo) providers.push(groq(env));
 
   const failures: string[] = [];
