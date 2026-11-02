@@ -1,86 +1,536 @@
 [
-  {
-    "id": "pd-seasons",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.1",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Punjab grows three potato crops: a spring crop and an autumn crop in the plains, and a summer crop in the hilly areas."
-  },
-  {
-    "id": "pd-districts",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.2",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "About 75% of Punjab's potatoes come from Kasur, Okara, Depalpur, Sahiwal and Pakpattan."
-  },
-  {
-    "id": "pd-sowing",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.3",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "All varieties released by the Potato Research Institute, Sahiwal, are sown in the second half of October."
-  },
-  {
-    "id": "pd-gujranwala",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.4",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Two of the Potato Research Institute, Sahiwal's varieties are recommended for Gujranwala (and Sialkot): Sialkot Red (SH-1035), released 2018. Red skin. Average yield 25.8 tonnes per hectare. High yield, climate resilient, tolerant of frost and disease. SH-5, released 2006. Red skin. Average yield 35.0 tonnes per hectare. Late maturing, tolerant of frost and disease."
-  },
-  {
-    "id": "pd-variety-sahiwal-red",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Sahiwal Red (FD 76-67): released 2019. Red skin. Average yield 28.4 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
-  },
-  {
-    "id": "pd-variety-sahiwal-white",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Sahiwal White (FD 73-110): released 2019. White skin. Average yield 30.5 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
-  },
-  {
-    "id": "pd-variety-cosmo",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Cosmo (FD 78-51): released 2019. Yellow skin. Average yield 29.9 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
-  },
-  {
-    "id": "pd-variety-sialkot-red",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Sialkot Red (SH-1035): released 2018. Red skin. Average yield 25.8 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
-  },
-  {
-    "id": "pd-variety-sadaf",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Sadaf (FD 78-36): released 2016. White skin. Average yield 26.6 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: climate resilient, frost and disease tolerant, good for processing."
-  },
-  {
-    "id": "pd-variety-ruby",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "Ruby (FD 63-1): released 2016. Red skin. Average yield 27.3 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant, good for processing."
-  },
-  {
-    "id": "pd-variety-pri-red",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "PRI-Red (FD 70-1): released 2013. Red skin. Average yield 34.2 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
-  },
-  {
-    "id": "pd-variety-sh-5",
-    "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
-    "page": "حصہ 1.5",
-    "url": "https://agripunjab.punjab.gov.pk/node/9632",
-    "text": "SH-5: released 2006. Red skin. Average yield 35.0 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
-  }
+ {
+  "id": "pd-seasons",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.1",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Punjab grows three potato crops: a spring crop and an autumn crop in the plains, and a summer crop in the hilly areas."
+ },
+ {
+  "id": "pd-districts",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.2",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "About 75% of Punjab's potatoes come from Kasur, Okara, Depalpur, Sahiwal and Pakpattan."
+ },
+ {
+  "id": "pd-sowing",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.3",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "All varieties released by the Potato Research Institute, Sahiwal, are sown in the second half of October."
+ },
+ {
+  "id": "pd-gujranwala",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.4",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Two of the Potato Research Institute, Sahiwal's varieties are recommended for Gujranwala (and Sialkot): Sialkot Red (SH-1035), released 2018. Red skin. Average yield 25.8 tonnes per hectare. High yield, climate resilient, tolerant of frost and disease. SH-5, released 2006. Red skin. Average yield 35.0 tonnes per hectare. Late maturing, tolerant of frost and disease."
+ },
+ {
+  "id": "pd-variety-sahiwal-red",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Sahiwal Red (FD 76-67): released 2019. Red skin. Average yield 28.4 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
+ },
+ {
+  "id": "pd-variety-sahiwal-white",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Sahiwal White (FD 73-110): released 2019. White skin. Average yield 30.5 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
+ },
+ {
+  "id": "pd-variety-cosmo",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Cosmo (FD 78-51): released 2019. Yellow skin. Average yield 29.9 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, frost and disease tolerant."
+ },
+ {
+  "id": "pd-variety-sialkot-red",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Sialkot Red (SH-1035): released 2018. Red skin. Average yield 25.8 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: high yield, climate resilient, frost and disease tolerant."
+ },
+ {
+  "id": "pd-variety-sadaf",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Sadaf (FD 78-36): released 2016. White skin. Average yield 26.6 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: climate resilient, frost and disease tolerant, good for processing."
+ },
+ {
+  "id": "pd-variety-ruby",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "Ruby (FD 63-1): released 2016. Red skin. Average yield 27.3 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant, good for processing."
+ },
+ {
+  "id": "pd-variety-pri-red",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "PRI-Red (FD 70-1): released 2013. Red skin. Average yield 34.2 tonnes per hectare. Recommended areas: Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
+ },
+ {
+  "id": "pd-variety-sh-5",
+  "source": "محکمہ زراعت پنجاب، آلو کا صفحہ",
+  "page": "حصہ 1.5",
+  "url": "https://agripunjab.punjab.gov.pk/node/9632",
+  "text": "SH-5: released 2006. Red skin. Average yield 35.0 tonnes per hectare. Recommended areas: Sialkot, Gujranwala, Sahiwal, Okara, Pakpattan, Kasur. Traits: late maturing, frost and disease tolerant."
+ },
+ {
+  "id": "demo-units",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "B1",
+  "text": "1 acre = 8 kanal. 1 kanal = 20 marla. 1 maund (mann) = 40 kg. 1 bag of fertiliser = 50 kg. 1 hectare = about 2.47 acres. 1 tonne per hectare is about 10 maunds per acre."
+ },
+ {
+  "id": "demo-potato-land-prep",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C1",
+  "text": "Potato land preparation: plough the field 2 to 3 times and level it. Potatoes like loose, well-drained, sandy loam soil. Add well-rotted farmyard manure a few weeks before sowing if available."
+ },
+ {
+  "id": "demo-potato-spacing",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C2",
+  "text": "Potato ridges and spacing: sow on ridges about 75 cm (2.5 feet) apart. Place seed about 20 to 25 cm (8 to 10 inches) apart along the ridge, about 5 to 8 cm deep."
+ },
+ {
+  "id": "demo-potato-seed-cutting",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C3",
+  "text": "Potato seed size and cutting: whole medium seed potatoes (about the size of a hen's egg) are best. Large seed can be cut into pieces with at least 2 eyes each. Let cut pieces dry in the shade for a day before sowing."
+ },
+ {
+  "id": "demo-potato-first-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C4",
+  "text": "Potato first irrigation: give a light irrigation soon after sowing. Do not let water go over the top of the ridges."
+ },
+ {
+  "id": "demo-potato-irrigation-interval",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C5",
+  "text": "Potato irrigation interval: usually every 8 to 12 days, depending on soil and weather. Sandy soil needs water more often, heavy soil less. Water less in foggy, cold weeks."
+ },
+ {
+  "id": "demo-potato-critical-water",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C6",
+  "text": "Potato most important time for water: when tubers start forming and growing, roughly 5 to 12 weeks after sowing. Dry soil at this stage gives small or cracked potatoes."
+ },
+ {
+  "id": "demo-potato-weeds",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C7",
+  "text": "Potato weeds: remove weeds by hoeing in the first month, before earthing up. After earthing up the crop covers the ground and weeds are fewer."
+ },
+ {
+  "id": "demo-potato-earthing-up",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C8",
+  "text": "Potato earthing up: earth up the ridges about 30 to 35 days after sowing so the growing potatoes stay covered. Potatoes left uncovered turn green and are not fit to eat."
+ },
+ {
+  "id": "demo-potato-second-fertiliser",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C9",
+  "text": "Potato second dose of fertiliser: a second nitrogen dose is often given at earthing up. For the exact amount for your soil, ask your agriculture officer."
+ },
+ {
+  "id": "demo-potato-late-blight",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C10",
+  "text": "Potato late blight (jhulsa): the most serious potato disease in Punjab winters. Risk is highest in cold, foggy, humid weather (usually December and January). Signs: dark, wet-looking patches on leaves, white growth underneath in the morning, quick spread across the field. What to do: tell your agriculture officer early. Protective sprays are used before it spreads. Always follow the label."
+ },
+ {
+  "id": "demo-potato-early-blight",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C11",
+  "text": "Potato early blight: brown spots with rings, like a target, on older leaves. Usually less serious than late blight. Ask your agriculture officer before spraying."
+ },
+ {
+  "id": "demo-potato-aphids",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C12",
+  "text": "Potato aphids (tela): small insects under the leaves that suck sap and spread virus diseases. Common from December. Check the underside of leaves weekly. Ask the agriculture officer before spraying."
+ },
+ {
+  "id": "demo-potato-cutworm",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C13",
+  "text": "Potato cutworm (sundi): cuts young plants at ground level at night. Look for cut plants in the morning and dig around them. Report heavy damage to the agriculture officer."
+ },
+ {
+  "id": "demo-potato-frost",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C14",
+  "text": "Potato frost: frost can burn leaves in December and January. A light irrigation before an expected frost night helps protect the crop."
+ },
+ {
+  "id": "demo-potato-stop-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C15",
+  "text": "Potato stopping irrigation and cutting vines: stop watering 10 to 15 days before digging. Some farmers cut the vines about 10 days before digging so the skin of the potato hardens and does not peel in storage."
+ },
+ {
+  "id": "demo-potato-harvest",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C16",
+  "text": "Potato harvest: most varieties are ready in about 90 to 110 days. Yellowing leaves are a sign the crop is ready. Dig in dry weather and do not leave potatoes in the sun."
+ },
+ {
+  "id": "demo-potato-storage",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C17",
+  "text": "Potato storage: store in a cool, dark, airy place. Seed potatoes go to cold storage. Do not store damaged or green potatoes with good ones."
+ },
+ {
+  "id": "demo-potato-typical-yield",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "C18",
+  "text": "Potato typical yield: a good crop gives roughly 100 to 200 maunds per acre, depending on variety, seed and care."
+ },
+ {
+  "id": "demo-wheat-sowing",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D1",
+  "text": "Wheat sowing time: wheat is a rabi crop. The best time in central Punjab is usually 1 to 30 November. Late sowing after mid-December lowers yield."
+ },
+ {
+  "id": "demo-wheat-varieties",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D2",
+  "text": "Wheat varieties: use approved varieties recommended for your area. Ask the agriculture officer which ones are approved this year."
+ },
+ {
+  "id": "demo-wheat-seed-rate",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D3",
+  "text": "Wheat seed rate: about 40 to 50 kg per acre for timely sowing. A little more for late sowing."
+ },
+ {
+  "id": "demo-wheat-seed-treatment",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D4",
+  "text": "Wheat seed treatment: treat seed before sowing against seed-borne diseases. Ask the agriculture officer for the approved method."
+ },
+ {
+  "id": "demo-wheat-land-prep",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D5",
+  "text": "Wheat land preparation: prepare a fine, level seedbed. Laser levelling saves water and gives even growth."
+ },
+ {
+  "id": "demo-wheat-sowing-method",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D6",
+  "text": "Wheat sowing method: drill sowing in lines gives better results than broadcasting. Rows about 22 cm (9 inches) apart."
+ },
+ {
+  "id": "demo-wheat-fertiliser",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D7",
+  "text": "Wheat fertiliser: usually phosphorus and potash at sowing, with nitrogen split between sowing and the first one or two irrigations. Example of a common pattern: DAP at sowing, urea split between sowing and the first and second irrigation. Exact amounts depend on the soil test. Ask the agriculture officer."
+ },
+ {
+  "id": "demo-wheat-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D8",
+  "text": "Wheat irrigation: wheat usually needs 4 to 5 irrigations. Most important stages: crown root stage (about 20 to 25 days after sowing), flowering, and grain filling."
+ },
+ {
+  "id": "demo-wheat-weeds",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D9",
+  "text": "Wheat weeds: weeds such as dumbi sitti and jangli jai compete strongly in the first 30 to 40 days. Control them early. Ask the agriculture officer about approved weed control."
+ },
+ {
+  "id": "demo-wheat-rust",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D10",
+  "text": "Wheat rust: yellow or brown powdery stripes or spots on leaves. Risk rises in cool, humid weather. Use resistant varieties. Report it to the agriculture officer quickly."
+ },
+ {
+  "id": "demo-wheat-aphids",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D11",
+  "text": "Wheat aphids (tela): appear on leaves and ears in February and March. Check fields weekly. Ask the agriculture officer before spraying."
+ },
+ {
+  "id": "demo-wheat-harvest",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D12",
+  "text": "Wheat harvest: usually April to early May, when the grain is hard and the straw is golden. Harvest promptly so grain does not shatter. Avoid harvesting in rain."
+ },
+ {
+  "id": "demo-wheat-yield",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "D13",
+  "text": "Wheat typical yield: roughly 40 to 60 maunds per acre with good management."
+ },
+ {
+  "id": "demo-rice-season",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E1",
+  "text": "Rice season: kharif crop. Nursery sowing usually in May to June, transplanting in late June to July. Gujranwala, Sheikhupura and Sialkot are known for basmati."
+ },
+ {
+  "id": "demo-rice-nursery",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E2",
+  "text": "Rice nursery: prepare the nursery about a month before transplanting. Transplant seedlings when they are about 25 to 35 days old."
+ },
+ {
+  "id": "demo-rice-transplanting",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E3",
+  "text": "Rice transplanting: transplant 2 seedlings per hill, about 22 cm (9 inches) apart. Aim for around 80,000 hills per acre."
+ },
+ {
+  "id": "demo-rice-water",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E4",
+  "text": "Rice water: keep standing water of a few centimetres for the first weeks after transplanting. Alternate wetting and drying later saves water. Stop irrigation about 2 weeks before harvest."
+ },
+ {
+  "id": "demo-rice-fertiliser",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E5",
+  "text": "Rice fertiliser: phosphorus and potash at transplanting, nitrogen split into 2 or 3 doses. Zinc deficiency is common in rice soils. Ask the agriculture officer for exact amounts."
+ },
+ {
+  "id": "demo-rice-stem-borer",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E6",
+  "text": "Rice stem borer (tana sundi): causes dead hearts in young plants and white empty ears later. Report heavy attack to the agriculture officer."
+ },
+ {
+  "id": "demo-rice-leaf-blight",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E7",
+  "text": "Rice bacterial leaf blight: yellowing and drying from the leaf tips and edges. More common after heavy rain and with too much nitrogen."
+ },
+ {
+  "id": "demo-rice-harvest",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E8",
+  "text": "Rice harvest: usually October to November. Harvest when most grains are golden and hard."
+ },
+ {
+  "id": "demo-rice-stubble",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "E9",
+  "text": "Rice stubble burning: do not burn the leftover straw. It adds to smog and damages soil. Ask the agriculture officer about machines and methods to manage it."
+ },
+ {
+  "id": "demo-cotton-season",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F1",
+  "text": "Cotton season: kharif crop, mainly in southern Punjab. Sowing usually April to May."
+ },
+ {
+  "id": "demo-cotton-seed",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F2",
+  "text": "Cotton seed: use certified seed of approved varieties. Delinted seed sows more evenly."
+ },
+ {
+  "id": "demo-cotton-sowing",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F3",
+  "text": "Cotton sowing: sow on beds or ridges. Rows about 75 cm (2.5 feet) apart. Thin plants to proper spacing after germination."
+ },
+ {
+  "id": "demo-cotton-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F4",
+  "text": "Cotton irrigation: first irrigation about 3 to 4 weeks after sowing on flat sowing, earlier on beds. Avoid water stress at flowering and boll formation."
+ },
+ {
+  "id": "demo-cotton-whitefly",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F5",
+  "text": "Cotton whitefly (safed makhi): small white insects under leaves that suck sap and spread leaf curl virus. Check leaves regularly. Ask the agriculture officer before spraying."
+ },
+ {
+  "id": "demo-cotton-pink-bollworm",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F6",
+  "text": "Cotton pink bollworm (gulabi sundi): larva inside flowers and bolls. Rosette-shaped flowers are a sign. Destroy crop leftovers after the season to reduce it next year."
+ },
+ {
+  "id": "demo-cotton-leaf-curl",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F7",
+  "text": "Cotton leaf curl: leaves curl upward and thicken. Spread by whitefly. Use tolerant varieties and control whitefly."
+ },
+ {
+  "id": "demo-cotton-picking",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "F8",
+  "text": "Cotton picking (chunaai): pick cotton when bolls are fully open and dry. Keep it clean and free of contamination such as plastic or hair."
+ },
+ {
+  "id": "demo-sugarcane-planting",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G1",
+  "text": "Sugarcane planting time: autumn planting mid-September to October. Spring planting mid-February to March."
+ },
+ {
+  "id": "demo-sugarcane-seed",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G2",
+  "text": "Sugarcane seed cane: use healthy cane setts with 2 to 3 buds each, from a disease-free crop."
+ },
+ {
+  "id": "demo-sugarcane-method",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G3",
+  "text": "Sugarcane planting method: plant in trenches or furrows, rows about 1.2 m (4 feet) apart."
+ },
+ {
+  "id": "demo-sugarcane-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G4",
+  "text": "Sugarcane irrigation: needs frequent irrigation in hot months, less in winter. Avoid water standing for long."
+ },
+ {
+  "id": "demo-sugarcane-earthing-up",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G5",
+  "text": "Sugarcane earthing up: earth up in May to June to support the cane and prevent lodging."
+ },
+ {
+  "id": "demo-sugarcane-borers",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G6",
+  "text": "Sugarcane borers: shoot borer and top borer cause dead hearts. Remove and destroy affected shoots. Report heavy attack."
+ },
+ {
+  "id": "demo-sugarcane-red-rot",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G7",
+  "text": "Sugarcane red rot: leaves dry, inside of cane turns red with white patches and smells sour. Use healthy seed and resistant varieties."
+ },
+ {
+  "id": "demo-sugarcane-harvest",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "G8",
+  "text": "Sugarcane harvest: crushing season usually November to March. Cut cane close to the ground and send to the mill quickly so it does not lose sugar."
+ },
+ {
+  "id": "demo-maize-seasons",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "H1",
+  "text": "Maize seasons: spring maize sown February to March. Autumn maize sown late July to August."
+ },
+ {
+  "id": "demo-maize-sowing",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "H2",
+  "text": "Maize sowing: sow on ridges or beds, rows about 75 cm apart, plants about 20 to 23 cm apart."
+ },
+ {
+  "id": "demo-maize-irrigation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "H3",
+  "text": "Maize irrigation: most important at tasselling and grain filling. Do not let the field dry out at flowering."
+ },
+ {
+  "id": "demo-maize-armyworm",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "H4",
+  "text": "Maize fall armyworm (sundi): feeds inside the leaf whorl, leaving ragged holes and sawdust-like droppings. Check the whorl regularly. Report it to the agriculture officer early."
+ },
+ {
+  "id": "demo-maize-harvest",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "H5",
+  "text": "Maize harvest: when husks are dry and grains are hard. Dry grain properly before storage to prevent fungus."
+ },
+ {
+  "id": "demo-onion",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I1",
+  "text": "Onion (piyaz): nursery in October to November, transplanting December to January. Light, frequent irrigation. Stop watering about 2 weeks before harvest. Harvest when tops fall over."
+ },
+ {
+  "id": "demo-tomato",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I2",
+  "text": "Tomato (tamatar): main nursery in September to October for winter crop, and in spring. Stake plants to keep fruit off the ground. Protect from frost."
+ },
+ {
+  "id": "demo-chilli",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I3",
+  "text": "Chilli (mirch): nursery in winter, transplanting in February to March. Watch for leaf curl and mites. Avoid waterlogging."
+ },
+ {
+  "id": "demo-peas",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I4",
+  "text": "Peas (matar): sown October to November. Needs cool weather. Light irrigation, avoid overwatering."
+ },
+ {
+  "id": "demo-cauliflower-cabbage",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I5",
+  "text": "Cauliflower and cabbage (phool gobhi, band gobhi): nursery from July (early types) to October (late types). Transplant at 4 to 6 weeks."
+ },
+ {
+  "id": "demo-okra",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "I6",
+  "text": "Okra (bhindi): sown February to March and in June to July. Pick pods young, every 2 to 3 days."
+ },
+ {
+  "id": "demo-soil-testing",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J1",
+  "text": "Soil testing: getting the soil tested is best. It shows how much fertiliser is needed and saves money. Ask the agriculture officer for the nearest soil testing lab."
+ },
+ {
+  "id": "demo-certified-seed",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J2",
+  "text": "Certified seed: always use certified seed. Old home-saved seed increases disease year after year."
+ },
+ {
+  "id": "demo-safe-spraying",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J3",
+  "text": "Safe spraying: wear a mask, gloves and full clothes while spraying. Spray with the wind direction. Burn or bury empty containers, never use them at home. Keep children away."
+ },
+ {
+  "id": "demo-water-saving",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J4",
+  "text": "Water saving: laser levelling and sowing on beds can save 20 to 30 percent of water."
+ },
+ {
+  "id": "demo-smog-burning",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J5",
+  "text": "Smog and burning: do not burn crop residue. It increases smog and reduces the strength of the soil."
+ },
+ {
+  "id": "demo-crop-rotation",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "J6",
+  "text": "Crop rotation: do not grow the same crop in the same field every year. Changing crops reduces disease."
+ },
+ {
+  "id": "demo-weather-actions",
+  "source": "ڈیمو مواد (غیر تصدیق شدہ)",
+  "page": "A13",
+  "text": "Weather-linked actions: if rain is expected in the next 24 hours, do not spray now, rain will wash the spray off. If frost is expected tonight, give a light irrigation. Fog for several days raises the risk of blight; check the crop daily."
+ }
 ]
