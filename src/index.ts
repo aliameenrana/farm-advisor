@@ -21,6 +21,15 @@ interface InboundMessage {
   location?: { latitude: number; longitude: number };
 }
 
+// Meta accepts a send with 200 and reports a failed delivery later, as a
+// status on the webhook; without these the farmer's missing reply leaves no trace.
+interface Status {
+  id: string;
+  status: string;
+  recipient_id: string;
+  errors?: { code: number; title?: string; message?: string; error_data?: { details?: string } }[];
+}
+
 interface LogRow {
   input: string;
   transcript?: string | null;
@@ -83,7 +92,8 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
 
   if (msg.type === 'audio' && msg.audio) {
     const media = await downloadMedia(env, msg.audio.id);
-    const t = media && (await transcribe(env, media.bytes));
+    if (!media) throw new Error('voice note download failed');
+    const t = await transcribe(env, media.bytes);
     const minConfidence = Number(env.MIN_CONFIDENCE ?? '-0.9');
     if (!t || t.noSpeech || !t.text || t.confidence < minConfidence) {
       await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: 'unclear_audio' });
@@ -93,10 +103,12 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     confidence = t.confidence;
   } else if (msg.type === 'image' && msg.image) {
     photo = await downloadMedia(env, msg.image.id);
+    if (!photo) throw new Error('photo download failed');
     text = msg.image.caption ?? null;
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
   } else {
+    await log(env, tester, { input: msg.type, outcome: 'unsupported' });
     return reply(env, to, FIXED.unsupported, lang);
   }
 
@@ -177,9 +189,14 @@ export default {
     }
 
     const body = JSON.parse(raw) as {
-      entry?: { changes?: { value?: { messages?: InboundMessage[] } }[] }[];
+      entry?: { changes?: { value?: { messages?: InboundMessage[]; statuses?: Status[] } }[] }[];
     };
-    const messages = body.entry?.flatMap((e) => e.changes?.flatMap((c) => c.value?.messages ?? []) ?? []) ?? [];
+    const values = body.entry?.flatMap((e) => e.changes?.map((c) => c.value ?? {}) ?? []) ?? [];
+    const messages = values.flatMap((v) => v.messages ?? []);
+    for (const s of values.flatMap((v) => v.statuses ?? []).filter((s) => s.status === 'failed')) {
+      const why = (s.errors ?? []).map((e) => `${e.code} ${e.title ?? ''} ${e.error_data?.details ?? e.message ?? ''}`.trim()).join('; ');
+      await log(env, await hashNumber(env, s.recipient_id), { input: 'delivery', outcome: `undelivered: ${why}`.slice(0, 500) });
+    }
 
     // Answering takes longer than Meta waits and longer than waitUntil may
     // run, so each message becomes a queue job and the webhook returns now.
@@ -187,23 +204,33 @@ export default {
     return new Response('ok');
   },
 
-  // Jobs in a batch are different messages, usually from different farmers,
-  // so they run side by side. Failures are answered and acked rather than
-  // retried: seen_messages would skip a retry anyway.
+  // Different farmers run side by side; one farmer's messages run in order,
+  // so each answer sees the one before it in history and replies arrive in
+  // the order asked. Failures are answered and acked rather than retried:
+  // seen_messages would skip a retry anyway.
   async queue(batch: MessageBatch<InboundMessage>, env: Env): Promise<void> {
+    const bySender = new Map<string, Message<InboundMessage>[]>();
+    for (const job of batch.messages) bySender.set(job.body.from, [...(bySender.get(job.body.from) ?? []), job]);
     await Promise.all(
-      batch.messages.map(async (job) => {
-        try {
-          await handle(env, job.body);
-        } catch (err) {
-          console.error('handle failed', err);
-          const sent = await reply(env, job.body.from, FIXED.error, 'ur').then(() => '', (e: unknown) => `; error reply failed: ${String(e)}`);
-          await log(env, await hashNumber(env, job.body.from), {
-            input: job.body.type,
-            outcome: `failed: ${String(err).slice(0, 400)}${sent.slice(0, 400)}`,
-          }).catch((e) => console.error('log failed', e));
+      [...bySender.values()].map(async (jobs) => {
+        for (const job of jobs) {
+          try {
+            await handle(env, job.body);
+          } catch (err) {
+            console.error('handle failed', err);
+            const tester = await hashNumber(env, job.body.from);
+            const known = await env.DB.prepare('SELECT lang FROM testers WHERE tester_hash = ?').bind(tester).first<{ lang: string | null }>().catch(() => null);
+            const sent = await reply(env, job.body.from, FIXED.error, known?.lang === 'pa' ? 'pa' : 'ur').then(
+              () => '',
+              (e: unknown) => `; error reply failed: ${String(e)}`,
+            );
+            await log(env, tester, {
+              input: job.body.type,
+              outcome: `failed: ${String(err).slice(0, 400)}${sent.slice(0, 400)}`,
+            }).catch((e) => console.error('log failed', e));
+          }
+          job.ack();
         }
-        job.ack();
       }),
     );
   },

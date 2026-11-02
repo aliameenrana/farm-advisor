@@ -342,6 +342,10 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
       steps.push(call.name);
       if (call.name === 'reply') {
         const input = call.input as AgentReplyInput;
+        // Models sometimes drop required fields; caught here, the reply is
+        // retried instead of crashing the send after the agent returns.
+        if (typeof input.text !== 'string' || !input.text.trim()) throw new Error('reply had no text');
+        input.citations = Array.isArray(input.citations) ? input.citations : [];
         const check = verifyReply(
           { text: `${input.text}\n${input.spoken_language === 'pa' ? `${input.punjabi_shahmukhi ?? ''}\n${input.spoken_text ?? ''}` : ''}`, citations: input.citations },
           GUIDANCE,

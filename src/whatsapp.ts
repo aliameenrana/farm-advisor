@@ -31,10 +31,7 @@ export async function sendVoice(env: Env, to: string, speech: { bytes: ArrayBuff
     body: form,
   });
   const json = (await res.json().catch(() => ({}))) as { id?: string };
-  if (!json.id) {
-    console.error('whatsapp media upload failed', res.status, json);
-    return false;
-  }
+  if (!json.id) throw new Error(`whatsapp media upload ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
   return post(env, to, { type: 'audio', audio: { id: json.id } });
 }
 

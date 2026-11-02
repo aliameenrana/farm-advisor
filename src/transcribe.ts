@@ -26,10 +26,8 @@ export async function transcribe(env: Env, audio: ArrayBuffer, language = 'ur'):
     headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` },
     body: form,
   });
-  if (!res.ok) {
-    console.error('whisper failed', res.status, await res.text());
-    return null;
-  }
+  // A failed service is not the farmer mumbling; asking them to repeat would mislead.
+  if (!res.ok) throw new Error(`whisper ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const json = (await res.json()) as { text?: string; segments?: Segment[] };
   const segments = json.segments ?? [];
   const text = json.text?.trim() ?? '';
