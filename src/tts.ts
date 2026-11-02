@@ -84,7 +84,7 @@ async function geminiOnce(env: Env, text: string, tone: Tone, lang: 'ur' | 'pa')
     method: 'POST',
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Speaker: a Pakistani man, 35 to 40 years old, with a mature, steady male voice. Read this aloud ${lang === 'pa' ? 'in Pakistani Punjabi as spoken in Gujranwala (the text is in Shahmukhi script)' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
+      contents: [{ parts: [{ text: `Speaker: a Pakistani man, 35 to 40 years old, with a mature, steady male voice. Read this aloud ${lang === 'pa' ? 'in Pakistani Punjabi as spoken in Gujranwala' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_TTS_VOICE ?? 'Charon' } } },
