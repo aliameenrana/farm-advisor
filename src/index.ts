@@ -152,7 +152,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     topic: ans.topic,
     outcome: sources.length ? 'answered' : ans.needs_officer ? 'referred' : 'conversation',
     sources: [ans.steps.join('>'), sources.map((x) => x.id).join(',')].filter(Boolean).join(' | '),
-    reply: written,
+    reply: punjabi ? `${written}\n[voice] ${punjabi}` : written,
   });
 }
 

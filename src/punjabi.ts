@@ -1,6 +1,14 @@
-// Indian Punjabi words the model can slip into Gurmukhi, mapped to what a
-// Pakistani Punjabi speaker says. Longest first so phrases win over parts.
+// Fixes applied to Gurmukhi before it is spoken: misspelled place names,
+// then Indian Punjabi words mapped to what a Pakistani speaker says.
+// Longer entries come first so phrases win over their parts.
 const PAKISTANI: [string, string][] = [
+  // Letter-by-letter spellings that make the voice add vowels, e.g. Gujranaawala.
+  ['ਗੁਜਰਾਨਵਾਲ', 'ਗੁਜਰਾਂਵਾਲ'],
+  ['ਗੋਜਰਾਨਵਾਲ', 'ਗੁਜਰਾਂਵਾਲ'],
+  ['ਗੋਜਰਾਂਵਾਲ', 'ਗੁਜਰਾਂਵਾਲ'],
+  ['ਸਾਹਿਵਾਲ', 'ਸਾਹੀਵਾਲ'],
+  ['ਓਕਾੜਹ', 'ਓਕਾੜਾ'],
+  ['ਦੇਪਾਲਪੁਰ', 'ਦੀਪਾਲਪੁਰ'],
   ['ਕਿਰਪਾ ਕਰਕੇ', 'ਮਿਹਰਬਾਨੀ ਕਰਕੇ'],
   ['ਕ੍ਰਿਪਾ ਕਰਕੇ', 'ਮਿਹਰਬਾਨੀ ਕਰਕੇ'],
   ['ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'ਅੱਸਲਾਮੁ ਅਲੈਕੁਮ'],

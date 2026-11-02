@@ -17,3 +17,9 @@ describe('pakistaniPunjabi', () => {
     expect(pakistaniPunjabi(t)).toEqual({ text: t, replaced: [] });
   });
 });
+
+describe('place names', () => {
+  it('fixes the letter-by-letter Gujranwala that the voice reads as Gujranaawala', () => {
+    expect(pakistaniPunjabi('ਗੁਜਰਾਨਵਾਲੇ ਲਈ').text).toBe('ਗੁਜਰਾਂਵਾਲੇ ਲਈ');
+  });
+});

@@ -66,7 +66,7 @@ Situations you will meet (not a complete list; use judgment)
 Language
 - Reply in the language they used. Transcripts of Punjabi voice notes come out in Urdu script with Punjabi words (ڈی، کیہڑی، اے، دا، نوں، لئی، چنگی), so judge by the words, not the script.
 - Urdu message: spoken_language "ur"; punjabi_shahmukhi and spoken_text are empty.
-- Punjabi message: spoken_language "pa". First write punjabi_shahmukhi: the reply in Pakistani Punjabi as spoken in Gujranwala, in Shahmukhi, using the words a Pakistani farmer uses (فی, ایکڑ, من, مہربانی, شکریہ, زراعت, پیداوار, مشورہ, مسئلہ, ویلا). Then spoken_text: that exact Shahmukhi text transliterated letter by letter into Gurmukhi for the voice. Transliterate, never translate: no Indian or Sanskrit-derived words (ਪ੍ਰਤੀ, ਕਿਰਪਾ, ਧੰਨਵਾਦ, ਖੇਤੀਬਾੜੀ, ਸਮੱਸਿਆ, ਉਪਜ, ਜਾਣਕਾਰੀ, ਵਿਭਾਗ). Same facts and numbers as text, nothing added.
+- Punjabi message: spoken_language "pa". First write punjabi_shahmukhi: the reply in Pakistani Punjabi as spoken in Gujranwala, in Shahmukhi, using the words a Pakistani farmer uses (فی, ایکڑ, من, مہربانی, شکریہ, زراعت, پیداوار, مشورہ, مسئلہ, ویلا). Then spoken_text: the same words written in standard Gurmukhi spelling, the way a Punjabi reader spells them (ਂ ੰ for nasals, ੱ for doubled consonants), so a voice reads them naturally. Keep every word Pakistani: never swap in Indian or Sanskrit-derived words (ਪ੍ਰਤੀ, ਕਿਰਪਾ, ਧੰਨਵਾਦ, ਖੇਤੀਬਾੜੀ, ਸਮੱਸਿਆ, ਉਪਜ, ਜਾਣਕਾਰੀ, ਵਿਭਾਗ). Spell names exactly: ਗੁਜਰਾਂਵਾਲਾ, ਸਿਆਲਕੋਟ, ਸਾਹੀਵਾਲ, ਓਕਾੜਾ, ਕਸੂਰ, ਪਾਕਪਤਨ, ਦੀਪਾਲਪੁਰ, ਲਾਹੌਰ, ਸਿਆਲਕੋਟ ਰੈੱਡ, ਸਾਹੀਵਾਲ ਰੈੱਡ, ਸਾਹੀਵਾਲ ਵਾਈਟ, ਕੌਸਮੋ, ਸਦਫ਼, ਰੂਬੀ, ਪੀ ਆਰ ਆਈ ਰੈੱਡ, ਐੱਸ ਐੱਚ 5, ਐੱਫ਼ ਡੀ, ਹੈਕਟੇਅਰ, ਏਕੜ, ਮਣ, ਫ਼ੀ. Same facts and numbers as text, nothing added.
 - text is always Urdu, for the farm owner to read.
 
 How to speak
@@ -144,7 +144,7 @@ const TOOLS: ToolDef[] = [
         needs_officer: { type: 'boolean' },
         spoken_language: { type: 'string', enum: ['ur', 'pa'] },
         punjabi_shahmukhi: { type: 'string', description: 'Pakistani Punjabi reply in Shahmukhi when spoken_language is pa, else empty.' },
-        spoken_text: { type: 'string', description: 'punjabi_shahmukhi transliterated letter by letter into Gurmukhi, else empty.' },
+        spoken_text: { type: 'string', description: 'punjabi_shahmukhi in standard Gurmukhi spelling, else empty.' },
         tone: { type: 'string', enum: ['cheerful', 'warm', 'calm', 'concerned', 'urgent'], description: 'How the reply should sound when spoken.' },
       },
     },
