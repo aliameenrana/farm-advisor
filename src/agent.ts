@@ -147,12 +147,13 @@ export function convertUnits(value: number, from: string, to: string): number | 
   return null;
 }
 
-const DIGITS = /[0-9۰-۹٠-٩]+(?:[.,][0-9۰-۹٠-٩]+)?/g;
+const DIGITS = /[0-9۰-۹٠-٩੦-੯]+(?:[.,][0-9۰-۹٠-٩੦-੯]+)?/g;
 
 function toAsciiDigits(s: string): string {
   return s
     .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[੦-੯]/g, (d) => String(d.charCodeAt(0) - 0x0a66));
 }
 
 // The model decides what to say; it is never trusted with where facts come
