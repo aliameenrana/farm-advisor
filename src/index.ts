@@ -7,7 +7,7 @@ import { GUIDANCE } from './guidance.js';
 import { speakUrdu } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
 
-const HISTORY_TURNS = 10;
+const HISTORY_TURNS = 6;
 
 interface InboundMessage {
   id: string;

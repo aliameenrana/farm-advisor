@@ -25,14 +25,14 @@ export interface AgentReply {
   steps: string[];
 }
 
-const SYSTEM = `You are a WhatsApp advisor for potato farmers and farm workers in Gujranwala, Punjab, Pakistan. Most messages are voice notes transcribed from Punjabi or Urdu, so expect transcription slips, dialect words and half-sentences. Many users cannot read: your reply is read aloud to them.
+const RULES = `You are a WhatsApp advisor for potato farmers and farm workers in Gujranwala, Punjab, Pakistan. Most messages are voice notes transcribed from Punjabi or Urdu, so expect transcription slips, dialect words and half-sentences. Many users cannot read: your reply is read aloud to them.
 
 How you work
-- Think about what the person actually needs, then use tools. Call read_guidance before saying anything about farming. Call get_weather for anything about weather, spraying or irrigation timing. Call convert_units for any unit change; never convert in your head.
+- Think about what the person actually needs. The official guidance is at the end of these instructions; it is your only source of farming facts. Call get_weather for anything about weather, spraying or irrigation timing. Call convert_units for any unit change; never convert in your head.
 - Finish every turn with the reply tool. One reply per turn.
 
 Hard rules
-1. Farming facts (varieties, timing, yields, districts, any practice) come ONLY from read_guidance chunks. For every chunk you rely on, put a citation whose quote is copied character for character from that chunk.
+1. Farming facts (varieties, timing, yields, districts, any practice) come ONLY from the guidance chunks below. For every chunk you rely on, put a citation whose quote is copied character for character from that chunk.
 2. Every number in your reply must appear in a cited quote, a tool result from this turn, or be the officer's phone number.
 3. Never name a pesticide or fertiliser brand, or a shop. Never give a chemical dose unless a chunk states it word for word, and then add that they must read the label.
 4. Weather facts may come from get_weather, but what to DO about the weather must come from a chunk. If no chunk covers it, give the forecast and say the official guidance does not cover that decision.
@@ -51,12 +51,19 @@ Situations you will meet (not a complete list; use judgment)
 - Guidance written for other districts: say it is the department's general guidance and Gujranwala may differ when that matters.
 - No location yet and they ask about weather: ask them to share their farm's location once with WhatsApp's location button.
 - Frustration or complaints: acknowledge it in a few words, then help.
-- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only if asked or clearly needed, always with convert_units (t_per_ha to maund_per_acre), and say it is a conversion.
+- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), and say it is a conversion.
 
 How to speak
 - Simple spoken Urdu in Urdu script, the way you would talk to a farmer in person. Short sentences, 1 to 4 of them. No lists, no symbols, no English words if an Urdu one exists. Numbers as digits.
 - Do not mention sources or section numbers in the text; they are added for you.
 - Never mention the agriculture officer or their number yourself; set needs_officer and a line is added for you. Leave needs_officer false for emergencies and greetings.`;
+
+// Fixed per deploy, so every request starts with the same prefix and Gemini
+// can reuse its cache across farmers and turns.
+const SYSTEM = `${RULES}
+
+Official guidance (cite by id):
+${GUIDANCE.length ? GUIDANCE.map((c) => `[${c.id}] ${c.text}`).join('\n') : '(none loaded)'}`;
 
 interface ToolDef {
   name: string;
@@ -65,11 +72,6 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
-  {
-    name: 'read_guidance',
-    description: 'Returns every official guidance chunk with its id. The only allowed source of farming facts.',
-    schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
   {
     name: 'get_weather',
     description: "4-day forecast for the farmer's saved farm location: temperature, rain, rain chance, wind.",
@@ -159,6 +161,13 @@ export function verifyReply(
   return { ok: true, sources };
 }
 
+interface Usage {
+  input: number;
+  cached: number;
+  output: number;
+  thinking: number;
+}
+
 interface ToolCall {
   id: string;
   name: string;
@@ -167,7 +176,7 @@ interface ToolCall {
 
 interface Provider {
   name: string;
-  step(messages: unknown[]): Promise<{ calls: ToolCall[]; assistant: unknown }>;
+  step(messages: unknown[]): Promise<{ calls: ToolCall[]; assistant: unknown; usage?: Usage }>;
   toolResults(results: { id: string; name: string; content: string }[]): unknown[];
   userMessage(text: string, photo: Photo | null): unknown;
   history(turns: Turn[]): unknown[];
@@ -200,13 +209,16 @@ function gemini(env: Env): Provider {
       if (!res.ok) throw new Error(`gemini ${res.status}: ${await res.text()}`);
       const json = (await res.json()) as {
         candidates?: { content?: { role: string; parts?: { functionCall?: { id?: string; name: string; args?: Record<string, unknown> } }[] } }[];
+        usageMetadata?: { promptTokenCount?: number; cachedContentTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
       };
+      const u = json.usageMetadata ?? {};
+      const usage = { input: u.promptTokenCount ?? 0, cached: u.cachedContentTokenCount ?? 0, output: u.candidatesTokenCount ?? 0, thinking: u.thoughtsTokenCount ?? 0 };
       const content = json.candidates?.[0]?.content;
       if (!content) throw new Error('gemini returned no content');
       const calls = (content.parts ?? [])
         .filter((p) => p.functionCall)
         .map((p, i) => ({ id: p.functionCall!.id ?? `${p.functionCall!.name}:${i}`, name: p.functionCall!.name, input: p.functionCall!.args ?? {} }));
-      return { calls, assistant: content };
+      return { calls, assistant: content, usage };
     },
     toolResults: (results) => [
       {
@@ -269,9 +281,17 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
   // 1122 is Punjab's emergency service, named by the safety rule in the prompt.
   let toolOutputs = `${env.OFFICER_PHONE} 1122`;
   let retried = false;
+  const total: Usage = { input: 0, cached: 0, output: 0, thinking: 0 };
+  const done = (r: Omit<AgentReply, 'steps'>): AgentReply => {
+    steps.push(`calls=${callsMade} in=${total.input} cached=${total.cached} out=${total.output} think=${total.thinking}`);
+    return { ...r, steps };
+  };
+  let callsMade = 0;
 
   for (let i = 0; i < MAX_STEPS; i++) {
-    const { calls, assistant } = await p.step(messages);
+    const { calls, assistant, usage } = await p.step(messages);
+    callsMade++;
+    if (usage) for (const k of Object.keys(total) as (keyof Usage)[]) total[k] += usage[k];
     messages.push(assistant);
     if (!calls.length) throw new Error('model made no tool call');
 
@@ -281,21 +301,19 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
       if (call.name === 'reply') {
         const input = call.input as { text: string; citations: Citation[]; topic: string; needs_officer: boolean };
         const check = verifyReply(input, GUIDANCE, toolOutputs);
-        if (check.ok) return { ...input, steps };
+        if (check.ok) return done(input);
         if (retried) throw new Error(`reply rejected twice: ${check.reason}`);
         retried = true;
         steps.push(`rejected: ${check.reason}`);
         results.push({
           id: call.id,
           name: call.name,
-          content: `Not sent. ${check.reason}. If that number is a unit conversion, call convert_units and use its result. Otherwise copy quotes exactly from read_guidance, and remove any number you cannot trace to a cited quote or a tool result. If the guidance does not support the claim, say it is not covered.`,
+          content: `Not sent. ${check.reason}. If that number is a unit conversion, call convert_units and use its result. Otherwise copy quotes exactly from the guidance, and remove any number you cannot trace to a cited quote or a tool result. If the guidance does not support the claim, say it is not covered.`,
         });
         continue;
       }
       let out: string;
-      if (call.name === 'read_guidance') {
-        out = GUIDANCE.length ? GUIDANCE.map((c) => `[${c.id}] ${c.text}`).join('\n') : '(no guidance loaded)';
-      } else if (call.name === 'get_weather') {
+      if (call.name === 'get_weather') {
         out = ctx.location
           ? ((await forecast(ctx.location.lat, ctx.location.lon).catch(() => null)) ?? 'Forecast unavailable right now.')
           : 'No location saved for this farmer.';
