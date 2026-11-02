@@ -134,6 +134,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     ? [guarded.text, ...(ans.needs_officer || photo ? [OFFICER_LINE.punjabi(env.OFFICER_PHONE)] : [])].join(' ')
     : undefined;
   const audio = await speak(env, spoken, ans.tone, punjabi);
+  ans.steps.push(`voice: ${audio?.provider ?? 'none'}`);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, written);
 

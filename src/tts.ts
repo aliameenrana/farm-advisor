@@ -5,6 +5,7 @@ import type { Tone } from './agent.js';
 export interface Speech {
   bytes: ArrayBuffer;
   mime: string;
+  provider?: string;
 }
 
 function escapeXml(s: string): string {
@@ -77,7 +78,7 @@ async function gemini(env: Env, text: string, tone: Tone = 'warm', lang: 'ur' | 
     method: 'POST',
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Read this aloud ${lang === 'pa' ? 'in Punjabi as spoken in Gujranwala, Pakistan' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
+      contents: [{ parts: [{ text: `Speaker: a Pakistani man, 35 to 40 years old, with a mature, steady male voice. Read this aloud ${lang === 'pa' ? 'in Punjabi as spoken in Gujranwala, Pakistan' : 'in Urdu with a Pakistani accent'}, ${DELIVERY[tone]}:\n${text}` }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_TTS_VOICE ?? 'Charon' } } },
@@ -111,7 +112,7 @@ export async function speak(env: Env, text: string, tone?: Tone, punjabi?: strin
       console.error(`${name} tts threw`, err);
       return null;
     });
-    if (speech) return speech;
+    if (speech) return { ...speech, provider: name };
   }
   return null;
 }
