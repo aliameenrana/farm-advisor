@@ -125,7 +125,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
   await sendText(env, to, written);
-  const audio = await speak(env, spoken);
+  const audio = await speak(env, spoken, ans.tone);
   if (audio) await sendVoice(env, to, audio);
 
   await env.DB.batch([

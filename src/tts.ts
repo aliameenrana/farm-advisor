@@ -1,5 +1,6 @@
 import { Mp3Encoder } from '@breezystack/lamejs';
 import type { Env } from './env.js';
+import type { Tone } from './agent.js';
 
 export interface Speech {
   bytes: ArrayBuffer;
@@ -61,14 +62,22 @@ export function pcmToMp3(pcm: Uint8Array, sampleRate: number): ArrayBuffer {
   return mp3.buffer;
 }
 
-async function gemini(env: Env, text: string): Promise<Speech | null> {
+const DELIVERY: Record<Tone, string> = {
+  cheerful: 'happily and with energy, like greeting a friend you are glad to hear from',
+  warm: 'warmly and clearly, like friendly advice to a farmer',
+  calm: 'calmly and gently, at an unhurried pace',
+  concerned: 'with care and concern, gently and clearly',
+  urgent: 'calmly but urgently, clear and firm, without any cheerfulness',
+};
+
+async function gemini(env: Env, text: string, tone: Tone = 'warm'): Promise<Speech | null> {
   if (!env.GEMINI_API_KEY) return null;
   const model = env.GEMINI_TTS_MODEL ?? 'gemini-2.5-flash-preview-tts';
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Read this aloud in Urdu with a Pakistani accent, slowly, warm and clear, like advice to a farmer:\n${text}` }] }],
+      contents: [{ parts: [{ text: `Read this aloud in Urdu with a Pakistani accent, ${DELIVERY[tone]}:\n${text}` }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_TTS_VOICE ?? 'Charon' } } },
@@ -89,15 +98,14 @@ async function gemini(env: Env, text: string): Promise<Speech | null> {
   return { bytes: pcmToMp3(base64ToBytes(audio.data), rate), mime: 'audio/mpeg' };
 }
 
-const PROVIDERS = { gemini, azure } as const;
-type ProviderName = keyof typeof PROVIDERS;
+type ProviderName = 'gemini' | 'azure';
 
 // TTS_PROVIDER picks the first voice to try; the other is the fallback.
 // Null means no voice could be made, and the text reply still goes out.
-export async function speak(env: Env, text: string): Promise<Speech | null> {
+export async function speak(env: Env, text: string, tone?: Tone): Promise<Speech | null> {
   const order: ProviderName[] = env.TTS_PROVIDER === 'azure' ? ['azure', 'gemini'] : ['gemini', 'azure'];
   for (const name of order) {
-    const speech = await PROVIDERS[name](env, text).catch((err) => {
+    const speech = await (name === 'gemini' ? gemini(env, text, tone) : azure(env, text)).catch((err) => {
       console.error(`${name} tts threw`, err);
       return null;
     });

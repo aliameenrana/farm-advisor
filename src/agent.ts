@@ -17,11 +17,14 @@ export interface Citation {
   quote: string;
 }
 
+export type Tone = 'cheerful' | 'warm' | 'calm' | 'concerned' | 'urgent';
+
 export interface AgentReply {
   text: string;
   citations: Citation[];
   topic: string;
   needs_officer: boolean;
+  tone?: Tone;
   steps: string[];
 }
 
@@ -52,6 +55,7 @@ Situations you will meet (not a complete list; use judgment)
 - Places: the farmer's saved farm location is given with each message. When a question names another town or district, answer about THAT place: use guidance for that district, and get_weather with place set. Use the saved farm only when no place is named. If the guidance says nothing specific about the named place, say so and give what it says for Punjab generally.
 - No saved location: if this is the start of the conversation, after answering, ask once for the farm's location via WhatsApp's location button, saying it is for weather advice. If they ask about weather with no place and no saved location, ask for it. Do not keep asking every turn.
 - Frustration or complaints: acknowledge it in a few words, then help.
+- Energy: match the person's mood. An excited greeting ("assalamoalaikuuuum!!") gets an equally happy, lively reply; a tired or worried message gets a calm, gentle one. Never match anger or rudeness: stay calm and kind. Emergencies are always calm and urgent, never cheerful. Always respectful; many farmers are elders. Pick tone to match.
 - Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), all values in one call, and say it is a conversion. A question about yield alone is answered in the guidance's own units.
 
 How to speak
@@ -96,7 +100,7 @@ const TOOLS: ToolDef[] = [
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['text', 'citations', 'topic', 'needs_officer'],
+      required: ['text', 'citations', 'topic', 'needs_officer', 'tone'],
       properties: {
         text: { type: 'string', description: 'Spoken Urdu reply.' },
         citations: {
@@ -113,6 +117,7 @@ const TOOLS: ToolDef[] = [
           description: 'Short label for the log, e.g. variety, sowing, weather, greeting, out_of_scope, clarify.',
         },
         needs_officer: { type: 'boolean' },
+        tone: { type: 'string', enum: ['cheerful', 'warm', 'calm', 'concerned', 'urgent'], description: 'How the reply should sound when spoken.' },
       },
     },
   },
@@ -305,7 +310,7 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
     for (const call of calls) {
       steps.push(call.name);
       if (call.name === 'reply') {
-        const input = call.input as { text: string; citations: Citation[]; topic: string; needs_officer: boolean };
+        const input = call.input as { text: string; citations: Citation[]; topic: string; needs_officer: boolean; tone?: Tone };
         const check = verifyReply(input, GUIDANCE, toolOutputs);
         if (check.ok) return done(input);
         if (retried) throw new Error(`reply rejected twice: ${check.reason}`);
