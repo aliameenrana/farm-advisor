@@ -24,3 +24,26 @@ export async function forecast(lat: number, lon: number): Promise<string | null>
     )
     .join('\n');
 }
+
+// Open-Meteo's geocoder needs no key; limited to Pakistan so "Sahiwal" is
+// not resolved to a namesake elsewhere.
+export async function findPlace(name: string): Promise<{ lat: number; lon: number; label: string } | null> {
+  const res = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&countryCode=PK&language=en`,
+  );
+  if (!res.ok) return null;
+  const r = ((await res.json()) as { results?: { latitude: number; longitude: number; name: string; admin1?: string; admin2?: string }[] })
+    .results?.[0];
+  return r ? { lat: r.latitude, lon: r.longitude, label: [r.name, r.admin2, r.admin1].filter(Boolean).join(', ') } : null;
+}
+
+// Nominatim's policy asks for an identifying User-Agent and at most one
+// request a second; this runs once per shared location.
+export async function placeName(lat: number, lon: number): Promise<string | null> {
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&accept-language=en&lat=${lat}&lon=${lon}`, {
+    headers: { 'User-Agent': 'farm-advisor prototype (WhatsApp potato advisor)' },
+  });
+  if (!res.ok) return null;
+  const a = ((await res.json()) as { address?: Record<string, string> }).address ?? {};
+  return [a.city ?? a.town ?? a.village ?? a.county, a.state_district ?? a.district, a.state].filter(Boolean).join(', ') || null;
+}

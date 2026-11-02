@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  JOBS: Queue<unknown>;
   WHATSAPP_VERIFY_TOKEN: string;
   WHATSAPP_ACCESS_TOKEN: string;
   WHATSAPP_PHONE_NUMBER_ID: string;

@@ -9,7 +9,7 @@ WHATSAPP_PHONE_NUMBER_ID = "1326703063865933"
 WHATSAPP_BUSINESS_ACCOUNT_ID = "1809425623839959"
 MIN_CONFIDENCE = "-0.9"
 ANSWER_MODEL = "openai/gpt-oss-120b"
-GEMINI_MODEL = "gemini-flash-lite-latest"
+GEMINI_MODEL = "gemini-flash-latest"
 OFFICER_PHONE = "+920000000000"
 TTS_PROVIDER = "gemini"
 GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts"
@@ -20,3 +20,13 @@ AZURE_SPEECH_REGION = "qatarcentral"
 binding = "DB"
 database_name = "farm-advisor"
 database_id = "0699a97d-70da-4270-b438-e559dc2860d6"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "farm-advisor-jobs"
+
+[[queues.consumers]]
+queue = "farm-advisor-jobs"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 0

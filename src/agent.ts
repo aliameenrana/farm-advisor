@@ -1,6 +1,6 @@
 import type { Env } from './env.js';
 import { GUIDANCE, normalize, type Chunk } from './guidance.js';
-import { forecast } from './weather.js';
+import { findPlace, forecast } from './weather.js';
 
 export interface Photo {
   bytes: ArrayBuffer;
@@ -49,9 +49,10 @@ Situations you will meet (not a complete list; use judgment)
 - Partly covered: answer the covered part, then say plainly which part the guidance does not cover, and set needs_officer.
 - Not covered at all (fertiliser amounts, sprays, irrigation schedule, disease treatment, prices, markets, loans, other crops): say the official guidance you have does not cover it, set needs_officer. Do not fill the gap from your own knowledge.
 - Guidance written for other districts: say it is the department's general guidance and Gujranwala may differ when that matters.
-- No location yet and they ask about weather: ask them to share their farm's location once with WhatsApp's location button.
+- Places: the farmer's saved farm location is given with each message. When a question names another town or district, answer about THAT place: use guidance for that district, and get_weather with place set. Use the saved farm only when no place is named. If the guidance says nothing specific about the named place, say so and give what it says for Punjab generally.
+- No saved location: if this is the start of the conversation, after answering, ask once for the farm's location via WhatsApp's location button, saying it is for weather advice. If they ask about weather with no place and no saved location, ask for it. Do not keep asking every turn.
 - Frustration or complaints: acknowledge it in a few words, then help.
-- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), and say it is a conversion.
+- Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), all values in one call, and say it is a conversion. A question about yield alone is answered in the guidance's own units.
 
 How to speak
 - Simple spoken Urdu in Urdu script, the way you would talk to a farmer in person. Short sentences, 1 to 4 of them. No lists, no symbols, no English words if an Urdu one exists. Numbers as digits.
@@ -74,17 +75,19 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   {
     name: 'get_weather',
-    description: "4-day forecast for the farmer's saved farm location: temperature, rain, rain chance, wind.",
-    schema: { type: 'object', properties: {}, additionalProperties: false },
+    description:
+      "4-day forecast: temperature, rain, rain chance, wind. Pass place when the question names a town or district; leave it out for the farmer's saved farm.",
+    schema: { type: 'object', properties: { place: { type: 'string' } }, additionalProperties: false },
   },
   {
     name: 'convert_units',
-    description: 'Exact unit conversion. Units: hectare, acre, tonne, kg, maund (40 kg), t_per_ha, maund_per_acre.',
+    description:
+      'Exact unit conversion of one or more values in a single call. Units: hectare, acre, tonne, kg, maund (40 kg), t_per_ha, maund_per_acre.',
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['value', 'from', 'to'],
-      properties: { value: { type: 'number' }, from: { type: 'string' }, to: { type: 'string' } },
+      required: ['values', 'from', 'to'],
+      properties: { values: { type: 'array', items: { type: 'number' } }, from: { type: 'string' }, to: { type: 'string' } },
     },
   },
   {
@@ -204,6 +207,7 @@ function gemini(env: Env): Provider {
           contents: messages,
           tools: [{ functionDeclarations: TOOLS.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.schema })) }],
           toolConfig: { functionCallingConfig: { mode: 'ANY' } },
+          generationConfig: { thinkingConfig: { thinkingLevel: 'low' } },
         }),
       });
       if (!res.ok) throw new Error(`gemini ${res.status}: ${await res.text()}`);
@@ -266,17 +270,19 @@ function groq(env: Env): Provider {
   };
 }
 
-const MAX_STEPS = 6;
+const MAX_STEPS = 10;
 
 interface AgentContext {
   history: Turn[];
   message: string;
   photo: Photo | null;
-  location: { lat: number; lon: number } | null;
+  location: { lat: number; lon: number; name: string | null } | null;
 }
 
 async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentReply> {
-  const messages: unknown[] = [...p.history(ctx.history), p.userMessage(ctx.message, ctx.photo)];
+    const where = ctx.location ? `Saved farm location: ${ctx.location.name ?? `${ctx.location.lat}, ${ctx.location.lon}`}.` : 'Saved farm location: none.';
+  const start = ctx.history.length ? '' : ' This is the start of the conversation.';
+  const messages: unknown[] = [...p.history(ctx.history), p.userMessage(`[${where}${start}]\n${ctx.message}`, ctx.photo)];
   const steps: string[] = [];
   // 1122 is Punjab's emergency service, named by the safety rule in the prompt.
   let toolOutputs = `${env.OFFICER_PHONE} 1122`;
@@ -314,13 +320,21 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
       }
       let out: string;
       if (call.name === 'get_weather') {
-        out = ctx.location
-          ? ((await forecast(ctx.location.lat, ctx.location.lon).catch(() => null)) ?? 'Forecast unavailable right now.')
-          : 'No location saved for this farmer.';
+        const place = (call.input as { place?: string }).place?.trim();
+        const where = place ? await findPlace(place).catch(() => null) : ctx.location;
+        if (!where) out = place ? `Could not find ${place} in Pakistan.` : 'No location saved for this farmer.';
+        else {
+          const f = await forecast(where.lat, where.lon).catch(() => null);
+          out = f ? `${place ? (where as { label: string }).label : 'Saved farm'}:\n${f}` : 'Forecast unavailable right now.';
+        }
       } else if (call.name === 'convert_units') {
-        const { value, from, to } = call.input as { value: number; from: string; to: string };
-        const r = convertUnits(value, from, to);
-        out = r === null ? `Cannot convert ${from} to ${to}.` : `${value} ${from} = ${r} ${to}`;
+        const { values, from, to } = call.input as { values: number[]; from: string; to: string };
+        out = (values ?? [])
+          .map((v) => {
+            const r = convertUnits(v, from, to);
+            return r === null ? `Cannot convert ${from} to ${to}.` : `${v} ${from} = ${r} ${to}`;
+          })
+          .join('\n');
       } else {
         out = `Unknown tool ${call.name}.`;
       }

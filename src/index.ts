@@ -6,6 +6,7 @@ import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
 import { speak } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
+import { placeName } from './weather.js';
 
 const HISTORY_TURNS = 6;
 
@@ -45,9 +46,9 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
 // Workers who cannot read need every reply as a voice note; the text goes too
 // so the farm owner can check it.
 async function reply(env: Env, to: string, text: string): Promise<void> {
+  await sendText(env, to, text);
   const audio = await speak(env, text);
   if (audio) await sendVoice(env, to, audio);
-  await sendText(env, to, text);
 }
 
 async function handle(env: Env, msg: InboundMessage): Promise<void> {
@@ -59,10 +60,11 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   await markRead(env, msg.id).catch(() => undefined);
 
   if (msg.type === 'location' && msg.location) {
+    const name = await placeName(msg.location.latitude, msg.location.longitude).catch(() => null);
     await env.DB.prepare(
-      'INSERT INTO testers (tester_hash, lat, lon) VALUES (?,?,?) ON CONFLICT(tester_hash) DO UPDATE SET lat = excluded.lat, lon = excluded.lon',
+      'INSERT INTO testers (tester_hash, lat, lon, place) VALUES (?,?,?,?) ON CONFLICT(tester_hash) DO UPDATE SET lat = excluded.lat, lon = excluded.lon, place = excluded.place',
     )
-      .bind(tester, msg.location.latitude, msg.location.longitude)
+      .bind(tester, msg.location.latitude, msg.location.longitude, name)
       .run();
     await log(env, tester, { input: 'location', outcome: 'location_saved' });
     return reply(env, to, REPLY.locationSaved);
@@ -93,10 +95,10 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   }
 
   const input = msg.type === 'audio' ? 'voice' : msg.type;
-  const place = await env.DB.prepare('SELECT lat, lon FROM testers WHERE tester_hash = ?')
+  const place = await env.DB.prepare('SELECT lat, lon, place FROM testers WHERE tester_hash = ?')
     .bind(tester)
-    .first<{ lat: number | null; lon: number | null }>();
-  const location = place?.lat != null && place.lon != null ? { lat: place.lat, lon: place.lon } : null;
+    .first<{ lat: number | null; lon: number | null; place: string | null }>();
+  const location = place?.lat != null && place.lon != null ? { lat: place.lat, lon: place.lon, name: place.place } : null;
   const { results: past } = await env.DB.prepare(
     'SELECT role, content FROM (SELECT id, role, content FROM messages WHERE tester_hash = ? ORDER BY id DESC LIMIT ?) ORDER BY id',
   )
@@ -121,9 +123,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   // The source line goes in the text only; read aloud it would be noise.
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
+  await sendText(env, to, written);
   const audio = await speak(env, spoken);
   if (audio) await sendVoice(env, to, audio);
-  await sendText(env, to, written);
 
   await env.DB.batch([
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'user', message),
@@ -141,7 +143,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname !== '/webhook') return new Response('ok');
 
@@ -163,16 +165,26 @@ export default {
     };
     const messages = body.entry?.flatMap((e) => e.changes?.flatMap((c) => c.value?.messages ?? []) ?? []) ?? [];
 
-    // Meta retries any webhook not acknowledged within a few seconds, and the
-    // model call takes longer than that.
-    for (const msg of messages) {
-      ctx.waitUntil(
-        handle(env, msg).catch(async (err) => {
-          console.error('handle failed', err);
-          await sendText(env, msg.from, REPLY.error).catch(() => undefined);
-        }),
-      );
-    }
+    // Answering takes longer than Meta waits and longer than waitUntil may
+    // run, so each message becomes a queue job and the webhook returns now.
+    if (messages.length) await env.JOBS.sendBatch(messages.map((body) => ({ body })));
     return new Response('ok');
+  },
+
+  // Jobs in a batch are different messages, usually from different farmers,
+  // so they run side by side. Failures are answered and acked rather than
+  // retried: seen_messages would skip a retry anyway.
+  async queue(batch: MessageBatch<InboundMessage>, env: Env): Promise<void> {
+    await Promise.all(
+      batch.messages.map(async (job) => {
+        try {
+          await handle(env, job.body);
+        } catch (err) {
+          console.error('handle failed', err);
+          await sendText(env, job.body.from, REPLY.error).catch(() => undefined);
+        }
+        job.ack();
+      }),
+    );
   },
 };

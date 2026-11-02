@@ -16,5 +16,11 @@ export const REPLY = {
 };
 
 export function sourceLine(sources: Chunk[]): string {
-  return 'ماخذ: ' + sources.map((s) => `${s.source}، ${s.page}`).join('؛ ');
+  const bySource = new Map<string, string[]>();
+  for (const s of sources) {
+    const pages = bySource.get(s.source) ?? [];
+    if (!pages.includes(s.page)) pages.push(s.page);
+    bySource.set(s.source, pages);
+  }
+  return 'ماخذ: ' + [...bySource].map(([source, pages]) => `${source}، ${pages.join('، ')}`).join('؛ ');
 }

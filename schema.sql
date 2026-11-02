@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS testers (
   tester_hash TEXT PRIMARY KEY,
   lat REAL,
-  lon REAL
+  lon REAL,
+  place TEXT
 );
 
 -- Meta redelivers a webhook it thinks failed; this stops a second answer.
