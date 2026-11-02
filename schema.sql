@@ -2,7 +2,9 @@ CREATE TABLE IF NOT EXISTS testers (
   tester_hash TEXT PRIMARY KEY,
   lat REAL,
   lon REAL,
-  place TEXT
+  place TEXT,
+  -- Language of the farmer's last message, so fixed replies match it.
+  lang TEXT
 );
 
 -- Meta redelivers a webhook it thinks failed; this stops a second answer.

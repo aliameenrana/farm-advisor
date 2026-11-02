@@ -5,7 +5,7 @@ import { transcribe } from './transcribe.js';
 import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
 import { speak, speakCached } from './tts.js';
-import { FIXED, OFFICER_LINE, sourceLine, type Fixed } from './replies.js';
+import { FIXED, OFFICER_LINE, sourceLine, type Fixed, type Lang } from './replies.js';
 import { placeName } from './weather.js';
 
 const HISTORY_TURNS = 6;
@@ -45,8 +45,9 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
 
 // Fixed replies only, sent from code paths the model never chooses. Audio
 // goes first for workers who cannot read; the text follows for the owner.
-async function reply(env: Env, to: string, msg: Fixed): Promise<void> {
-  const audio = await speakCached(env, msg.spoken, 'pa');
+async function reply(env: Env, to: string, copies: Record<Lang, Fixed>, lang: Lang): Promise<void> {
+  const msg = copies[lang];
+  const audio = await speakCached(env, msg.spoken, lang);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, msg.text);
 }
@@ -59,6 +60,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const tester = await hashNumber(env, to);
   await markRead(env, msg.id).catch(() => undefined);
 
+  const known = await env.DB.prepare('SELECT lang FROM testers WHERE tester_hash = ?').bind(tester).first<{ lang: string | null }>();
+  const lang: Lang = known?.lang === 'pa' ? 'pa' : 'ur';
+
   if (msg.type === 'location' && msg.location) {
     const name = await placeName(msg.location.latitude, msg.location.longitude).catch(() => null);
     await env.DB.prepare(
@@ -67,7 +71,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
       .bind(tester, msg.location.latitude, msg.location.longitude, name)
       .run();
     await log(env, tester, { input: 'location', outcome: 'location_saved' });
-    return reply(env, to, FIXED.locationSaved);
+    return reply(env, to, FIXED.locationSaved, lang);
   }
 
   let text: string | null = null;
@@ -81,7 +85,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     const minConfidence = Number(env.MIN_CONFIDENCE ?? '-0.9');
     if (!t || t.noSpeech || !t.text || t.confidence < minConfidence) {
       await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: 'unclear_audio' });
-      return reply(env, to, FIXED.unclear);
+      return reply(env, to, FIXED.unclear, lang);
     }
     text = transcript = t.text;
     confidence = t.confidence;
@@ -91,7 +95,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
   } else {
-    return reply(env, to, FIXED.unsupported);
+    return reply(env, to, FIXED.unsupported, lang);
   }
 
   const input = msg.type === 'audio' ? 'voice' : msg.type;
@@ -112,8 +116,8 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   } catch (err) {
     console.error('agent failed', err);
     const out = photo ? FIXED.photo(env.OFFICER_PHONE) : FIXED.unknown(env.OFFICER_PHONE);
-    await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out.text });
-    return reply(env, to, out);
+    await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out[lang].text });
+    return reply(env, to, out, lang);
   }
 
   const sources = GUIDANCE.filter((c) => ans.citations.some((x) => x.chunk_id === c.id));
@@ -132,6 +136,9 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   await sendText(env, to, written);
 
   await env.DB.batch([
+    env.DB.prepare(
+      'INSERT INTO testers (tester_hash, lang) VALUES (?, ?) ON CONFLICT(tester_hash) DO UPDATE SET lang = excluded.lang',
+    ).bind(tester, ans.spoken_language === 'pa' ? 'pa' : 'ur'),
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'user', message),
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'assistant', ans.text),
   ]);
@@ -185,7 +192,7 @@ export default {
           await handle(env, job.body);
         } catch (err) {
           console.error('handle failed', err);
-          await reply(env, job.body.from, FIXED.error).catch(() => undefined);
+          await reply(env, job.body.from, FIXED.error, 'ur').catch(() => undefined);
         }
         job.ack();
       }),
