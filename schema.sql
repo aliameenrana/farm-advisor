@@ -22,3 +22,13 @@ CREATE TABLE IF NOT EXISTS log (
   sources TEXT,
   reply TEXT
 );
+
+-- Recent turns per tester so follow-up questions make sense; cleared with the log after the test week.
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  tester_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS messages_tester ON messages (tester_hash, id);

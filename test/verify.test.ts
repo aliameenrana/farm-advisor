@@ -1,56 +1,62 @@
 import { describe, expect, it } from 'vitest';
-import { verify, type ModelAnswer } from '../src/answer.js';
+import { convertUnits, verifyReply } from '../src/agent.js';
 import type { Chunk } from '../src/guidance.js';
 
 const chunks: Chunk[] = [
-  { id: 'c1', source: 'Synthetic test source', page: 'p1', text: 'آلو کی بوائی اکتوبر کے دوسرے نصف میں کریں۔ فی ایکڑ 12 بوری بیج۔' },
+  { id: 'c1', source: 'Synthetic test source', page: 'p1', text: 'آلو کی بوائی اکتوبر کے دوسرے نصف میں کریں۔ فی ایکڑ 12 بوری بیج۔ Average yield 25.8 tonnes per hectare.' },
 ];
+const cite = (quote: string) => [{ chunk_id: 'c1', quote }];
 
-const base: ModelAnswer = {
-  status: 'answer',
-  question: 'بوائی کب کریں؟',
-  topic: 'sowing',
-  answer: 'بوائی اکتوبر کے دوسرے نصف میں کریں۔',
-  citations: [{ chunk_id: 'c1', quote: 'آلو کی بوائی اکتوبر کے دوسرے نصف میں کریں' }],
-};
+describe('verifyReply', () => {
+  it('accepts a reply quoting real chunk text', () => {
+    expect(verifyReply({ text: 'بوائی اکتوبر کے دوسرے نصف میں کریں۔', citations: cite('آلو کی بوائی اکتوبر کے دوسرے نصف میں کریں') }, chunks, '').ok).toBe(true);
+  });
 
-describe('verify', () => {
-  it('accepts an answer quoting real chunk text', () => {
-    expect(verify(base, chunks, null).ok).toBe(true);
+  it('accepts a greeting with no citations and no numbers', () => {
+    expect(verifyReply({ text: 'وعلیکم السلام، آلو کے بارے میں پوچھیں۔', citations: [] }, chunks, '').ok).toBe(true);
+  });
+
+  it('rejects a number in an uncited reply', () => {
+    expect(verifyReply({ text: 'فی ایکڑ 12 بوری بیج ڈالیں۔', citations: [] }, chunks, '').ok).toBe(false);
   });
 
   it('rejects a quote the chunk does not contain', () => {
-    const r = verify({ ...base, citations: [{ chunk_id: 'c1', quote: 'آلو کی بوائی نومبر میں کریں' }] }, chunks, null);
-    expect(r.ok).toBe(false);
+    expect(verifyReply({ text: 'نومبر میں بوائی کریں۔', citations: cite('آلو کی بوائی نومبر میں کریں') }, chunks, '').ok).toBe(false);
   });
 
   it('rejects a made-up chunk id', () => {
-    expect(verify({ ...base, citations: [{ chunk_id: 'c9', quote: base.citations[0]!.quote }] }, chunks, null).ok).toBe(false);
-  });
-
-  it('rejects a number not in the cited quote, even if it is elsewhere in the chunk', () => {
-    expect(verify({ ...base, answer: 'فی ایکڑ 12 بوری بیج ڈالیں۔' }, chunks, null).ok).toBe(false);
+    expect(verifyReply({ text: 'x', citations: [{ chunk_id: 'c9', quote: 'آلو کی بوائی اکتوبر کے دوسرے' }] }, chunks, '').ok).toBe(false);
   });
 
   it('accepts a number from the cited quote written in Urdu digits', () => {
-    const r = verify(
-      { ...base, answer: 'فی ایکڑ ۱۲ بوری بیج ڈالیں۔', citations: [{ chunk_id: 'c1', quote: 'فی ایکڑ 12 بوری بیج' }] },
-      chunks,
-      null,
-    );
-    expect(r.ok).toBe(true);
+    expect(verifyReply({ text: 'فی ایکڑ ۱۲ بوری بیج ڈالیں۔', citations: cite('فی ایکڑ 12 بوری بیج') }, chunks, '').ok).toBe(true);
   });
 
   it('does not let 2 pass because 12 is in the quote', () => {
-    const r = verify(
-      { ...base, answer: 'فی ایکڑ 2 بوری بیج۔', citations: [{ chunk_id: 'c1', quote: 'فی ایکڑ 12 بوری بیج' }] },
-      chunks,
-      null,
-    );
-    expect(r.ok).toBe(false);
+    expect(verifyReply({ text: 'فی ایکڑ 2 بوری بیج۔', citations: cite('فی ایکڑ 12 بوری بیج') }, chunks, '').ok).toBe(false);
   });
 
-  it('rejects an answer with no citations', () => {
-    expect(verify({ ...base, citations: [] }, chunks, null).ok).toBe(false);
+  it('does not let 25 pass because 25.8 is in the quote', () => {
+    expect(verifyReply({ text: 'پیداوار 25 ٹن ہے۔', citations: cite('Average yield 25.8 tonnes per hectare') }, chunks, '').ok).toBe(false);
+  });
+
+  it('accepts a decimal from the quote', () => {
+    expect(verifyReply({ text: 'پیداوار 25.8 ٹن فی ہیکٹر ہے۔', citations: cite('Average yield 25.8 tonnes per hectare') }, chunks, '').ok).toBe(true);
+  });
+
+  it('accepts numbers from a tool result such as the forecast', () => {
+    expect(verifyReply({ text: 'کل بارش کا امکان 70 فیصد ہے۔', citations: [] }, chunks, '2026-11-03: 14–24°C, rain 3 mm (chance 70%)').ok).toBe(true);
+  });
+});
+
+describe('convertUnits', () => {
+  it('converts tonnes per hectare to maunds per acre', () => {
+    expect(convertUnits(25.8, 't_per_ha', 'maund_per_acre')).toBe(261.02);
+  });
+  it('round-trips maunds per acre back to tonnes per hectare', () => {
+    expect(convertUnits(261.02, 'maund_per_acre', 't_per_ha')).toBe(25.8);
+  });
+  it('refuses mixed dimensions', () => {
+    expect(convertUnits(1, 'acre', 'kg')).toBeNull();
   });
 });

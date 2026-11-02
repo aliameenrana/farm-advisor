@@ -12,7 +12,7 @@ export const REPLY = {
   readLabel: 'دوا یا کھاد استعمال کرنے سے پہلے اس کا لیبل ضرور پڑھیں۔',
   photo: (officer: string) =>
     `میں ابھی تصویر نہیں دیکھ سکتا۔ فصل میں جو مسئلہ نظر آ رہا ہے وہ آواز میں بتائیں۔ تصویر زراعت افسر کو بھی بھیج دیں: ${officer}`,
-  photoCheck: (officer: string) => `پکی تشخیص کے لیے زراعت افسر کو دکھائیں: ${officer}`,
+  officer: (officer: string) => `مزید رہنمائی کے لیے زراعت افسر سے رابطہ کریں: ${officer}`,
 };
 
 export function sourceLine(sources: Chunk[]): string {

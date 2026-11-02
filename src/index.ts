@@ -2,11 +2,12 @@ import type { Env } from './env.js';
 import { verifyMetaSignature } from './verify-signature.js';
 import { downloadMedia, markRead, sendText, sendVoice } from './whatsapp.js';
 import { transcribe } from './transcribe.js';
-import { forecast } from './weather.js';
-import { askModel, verify, type Photo } from './answer.js';
+import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
 import { speakUrdu } from './tts.js';
 import { REPLY, sourceLine } from './replies.js';
+
+const HISTORY_TURNS = 10;
 
 interface InboundMessage {
   id: string;
@@ -87,10 +88,6 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     text = msg.image.caption ?? null;
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
-    if (/^(hi|hello|salam|سلام|السلام|start)\b/i.test(text.trim()) && text.length < 30) {
-      await log(env, tester, { input: 'text', outcome: 'welcome' });
-      return reply(env, to, REPLY.welcome);
-    }
   } else {
     return reply(env, to, REPLY.unsupported);
   }
@@ -99,50 +96,46 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const place = await env.DB.prepare('SELECT lat, lon FROM testers WHERE tester_hash = ?')
     .bind(tester)
     .first<{ lat: number | null; lon: number | null }>();
-  const weather = place?.lat != null && place.lon != null ? await forecast(place.lat, place.lon).catch(() => null) : null;
+  const location = place?.lat != null && place.lon != null ? { lat: place.lat, lon: place.lon } : null;
+  const { results: past } = await env.DB.prepare(
+    'SELECT role, content FROM (SELECT id, role, content FROM messages WHERE tester_hash = ? ORDER BY id DESC LIMIT ?) ORDER BY id',
+  )
+    .bind(tester, HISTORY_TURNS)
+    .all<Turn>();
+  const message = text ?? '(photo with no caption)';
 
-  let ans;
+  let ans: AgentReply;
   try {
-    ans = await askModel(env, { text, weather, photo });
+    ans = await runAgent(env, { history: past, message, photo, location });
   } catch (err) {
-    if (!photo) throw err;
-    console.error('photo answer failed', err);
-    await log(env, tester, { input, outcome: 'photo_redirect' });
-    return reply(env, to, REPLY.photo(env.OFFICER_PHONE));
-  }
-  const checked = verify(ans, GUIDANCE, weather);
-
-  if (!checked.ok) {
-    const out =
-      ans.status === 'chat' ? REPLY.welcome : ans.status === 'unclear' ? REPLY.unclear : REPLY.unknown(env.OFFICER_PHONE);
-    await log(env, tester, {
-      input,
-      transcript,
-      confidence,
-      topic: ans.topic,
-      outcome: ans.status === 'answer' ? `rejected: ${checked.reason}` : ans.status,
-      reply: out,
-    });
+    console.error('agent failed', err);
+    const out = photo ? REPLY.photo(env.OFFICER_PHONE) : REPLY.unknown(env.OFFICER_PHONE);
+    await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out });
     return reply(env, to, out);
   }
 
-  const parts = [ans.answer.trim()];
-  if (/\d|[۰-۹]/.test(ans.answer) && (ans.topic === 'fertiliser' || ans.topic === 'disease')) parts.push(REPLY.readLabel);
-  if (photo || ans.topic === 'disease') parts.push(REPLY.photoCheck(env.OFFICER_PHONE));
-  // The source line goes in the text only; read aloud it would be noise.
+  const sources = GUIDANCE.filter((c) => ans.citations.some((x) => x.chunk_id === c.id));
+  const parts = [ans.text.trim()];
+  if (ans.needs_officer || photo) parts.push(REPLY.officer(env.OFFICER_PHONE));
   const spoken = parts.join(' ');
-  const written = `${spoken}\n\n${sourceLine(checked.sources)}`;
+  // The source line goes in the text only; read aloud it would be noise.
+  const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
   const audio = await speakUrdu(env, spoken);
   if (audio) await sendVoice(env, to, audio);
   await sendText(env, to, written);
+
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'user', message),
+    env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'assistant', ans.text),
+  ]);
   await log(env, tester, {
     input,
     transcript,
     confidence,
     topic: ans.topic,
-    outcome: 'answered',
-    sources: checked.sources.map((s) => s.id).join(','),
+    outcome: sources.length ? 'answered' : ans.needs_officer ? 'referred' : 'conversation',
+    sources: [ans.steps.join('>'), sources.map((x) => x.id).join(',')].filter(Boolean).join(' | '),
     reply: written,
   });
 }
