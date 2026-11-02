@@ -113,7 +113,8 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const checked = verify(ans, GUIDANCE, weather);
 
   if (!checked.ok) {
-    const out = ans.status === 'unclear' ? REPLY.unclear : REPLY.unknown(env.OFFICER_PHONE);
+    const out =
+      ans.status === 'chat' ? REPLY.welcome : ans.status === 'unclear' ? REPLY.unclear : REPLY.unknown(env.OFFICER_PHONE);
     await log(env, tester, {
       input,
       transcript,

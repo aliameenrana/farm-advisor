@@ -4,7 +4,7 @@ import { GUIDANCE, normalize, type Chunk } from './guidance.js';
 export const TOPICS = ['variety', 'sowing', 'fertiliser', 'water', 'disease', 'weather', 'other'] as const;
 
 export interface ModelAnswer {
-  status: 'answer' | 'unknown' | 'unclear';
+  status: 'answer' | 'unknown' | 'unclear' | 'chat';
   question: string;
   topic: (typeof TOPICS)[number];
   answer: string;
@@ -16,7 +16,7 @@ const SCHEMA = {
   additionalProperties: false,
   required: ['status', 'question', 'topic', 'answer', 'citations'],
   properties: {
-    status: { type: 'string', enum: ['answer', 'unknown', 'unclear'] },
+    status: { type: 'string', enum: ['answer', 'unknown', 'unclear', 'chat'] },
     question: { type: 'string' },
     topic: { type: 'string', enum: [...TOPICS] },
     answer: { type: 'string' },
@@ -36,7 +36,8 @@ const SYSTEM = `You advise potato farmers in Gujranwala, Punjab, Pakistan over W
 
 Rules you never break:
 1. Use ONLY the official guidance chunks and the weather forecast given below. Nothing from your own knowledge.
-2. status "unclear": the message is garbled or you cannot tell what is being asked. Do not guess.
+2. status "unclear": the words themselves are garbled or make no sense. Do not guess.
+   status "chat": a greeting, thanks, a complaint, or anything that is not a question about growing potatoes. Leave answer empty.
 3. status "unknown": the question is clear but the chunks do not answer it. Leave answer empty.
 4. status "answer": every fact in your answer is supported by a chunk. For each chunk you used, copy a supporting passage from it EXACTLY, character for character, into citations.quote.
 5. Never name a pesticide or fertiliser brand, or a shop.
