@@ -259,10 +259,24 @@ describe('the model misbehaving', () => {
     expect(JSON.stringify(agentCalls[1]!.contents)).toContain('Not sent');
   });
 
-  it('sends audio before text for every answer', async () => {
+  it('answers a voice note with audio first, then text', async () => {
+    geminiAgent = () => geminiSays(reply('جواب'));
+    await worker.queue(batch([{ id: 'a', from: '111', type: 'audio', audio: { id: 'v1' } }]), env);
+    expect(sent.map((s) => s.type)).toEqual(['audio', 'text']);
+  });
+
+  it('answers typed messages with text alone and never calls the voice', async () => {
     geminiAgent = () => geminiSays(reply('جواب'));
     await worker.queue(batch([text('a', '111', 'سلام')]), env);
-    expect(sent.map((s) => s.type)).toEqual(['audio', 'text']);
+    expect(sent.map((s) => s.type)).toEqual(['text']);
+    expect(vi.mocked(fetch).mock.calls.some(([u]) => String(u).includes('-tts:'))).toBe(false);
+  });
+
+  it('keeps a typed message\'s error reply text-only too', async () => {
+    geminiAgent = () => geminiSays(reply('جواب'));
+    db.exec('DROP TABLE messages');
+    await worker.queue(batch([text('a', '111', 'سلام')]), env);
+    expect(sent).toEqual([{ to: '111', type: 'text', text: FIXED.error.ur.text }]);
   });
 });
 

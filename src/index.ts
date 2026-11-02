@@ -53,11 +53,15 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
     .run();
 }
 
+// A typed message shows the farmer can read, so it gets text alone; speech
+// costs a TTS call that adds nothing for them.
+const wantsVoice = (type: string) => type !== 'text';
+
 // Fixed replies only, sent from code paths the model never chooses. Audio
 // goes first for workers who cannot read; the text follows for the owner.
-async function reply(env: Env, to: string, copies: Record<Lang, Fixed>, lang: Lang): Promise<void> {
+async function reply(env: Env, to: string, copies: Record<Lang, Fixed>, lang: Lang, voice: boolean): Promise<void> {
   const msg = copies[lang];
-  const audio = await speakCached(env, msg.spoken, lang);
+  const audio = voice ? await speakCached(env, msg.spoken, lang) : null;
   const voiceFailed = audio ? await sendVoice(env, to, audio).then(() => null, (e: unknown) => e) : null;
   await sendText(env, to, msg.text);
   if (voiceFailed) throw voiceFailed;
@@ -82,7 +86,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
       .bind(tester, msg.location.latitude, msg.location.longitude, name)
       .run();
     await log(env, tester, { input: 'location', outcome: 'location_saved' });
-    return reply(env, to, FIXED.locationSaved, lang);
+    return reply(env, to, FIXED.locationSaved, lang, true);
   }
 
   let text: string | null = null;
@@ -97,7 +101,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     const minConfidence = Number(env.MIN_CONFIDENCE ?? '-0.9');
     if (!t || t.noSpeech || !t.text || t.confidence < minConfidence) {
       await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: 'unclear_audio' });
-      return reply(env, to, FIXED.unclear, lang);
+      return reply(env, to, FIXED.unclear, lang, true);
     }
     text = transcript = t.text;
     confidence = t.confidence;
@@ -109,7 +113,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     text = msg.text.body.slice(0, 1500);
   } else {
     await log(env, tester, { input: msg.type, outcome: 'unsupported' });
-    return reply(env, to, FIXED.unsupported, lang);
+    return reply(env, to, FIXED.unsupported, lang, true);
   }
 
   const input = msg.type === 'audio' ? 'voice' : msg.type;
@@ -131,7 +135,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     console.error('agent failed', err);
     const out = photo ? FIXED.photo(env.OFFICER_PHONE) : FIXED.unknown(env.OFFICER_PHONE);
     await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out[lang].text });
-    return reply(env, to, out, lang);
+    return reply(env, to, out, lang, wantsVoice(msg.type));
   }
 
   const sources = GUIDANCE.filter((c) => ans.citations.some((x) => x.chunk_id === c.id));
@@ -146,8 +150,8 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const punjabi = guarded
     ? [guarded.text, ...(ans.needs_officer || photo ? [OFFICER_LINE.punjabi(env.OFFICER_PHONE)] : [])].join(' ')
     : undefined;
-  const audio = await speak(env, spoken, ans.tone, punjabi);
-  ans.steps.push(`voice: ${audio?.provider ?? 'none'}`);
+  const audio = wantsVoice(msg.type) ? await speak(env, spoken, ans.tone, punjabi) : null;
+  if (wantsVoice(msg.type)) ans.steps.push(`voice: ${audio?.provider ?? 'none'}`);
   const voiceFailed = audio ? await sendVoice(env, to, audio).then(() => null, (e: unknown) => e) : null;
   await sendText(env, to, written);
   if (voiceFailed) throw voiceFailed;
@@ -220,7 +224,7 @@ export default {
             console.error('handle failed', err);
             const tester = await hashNumber(env, job.body.from);
             const known = await env.DB.prepare('SELECT lang FROM testers WHERE tester_hash = ?').bind(tester).first<{ lang: string | null }>().catch(() => null);
-            const sent = await reply(env, job.body.from, FIXED.error, known?.lang === 'pa' ? 'pa' : 'ur').then(
+            const sent = await reply(env, job.body.from, FIXED.error, known?.lang === 'pa' ? 'pa' : 'ur', wantsVoice(job.body.type)).then(
               () => '',
               (e: unknown) => `; error reply failed: ${String(e)}`,
             );
