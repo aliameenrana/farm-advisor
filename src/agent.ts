@@ -85,6 +85,10 @@ const YIELD_CONVERSIONS = [
   .map((t) => `${t} tonnes per hectare = ${convertUnits(t, 't_per_ha', 'maund_per_acre')} maunds per acre`)
   .join('\n');
 
+// Variety codes such as SH-5 or FD 76-67 contain digits that are names, not
+// quantities; without this a reply naming SH-5 is rejected and rewritten.
+const VARIETY_CODES = [...new Set(GUIDANCE.flatMap((c) => c.text.match(/\b(?:SH|FD)[- ]?\d+(?:-\d+)?/g) ?? []))].join(' ');
+
 // Fixed per deploy, so every request starts with the same prefix and Gemini
 // can reuse its cache across farmers and turns.
 const SYSTEM = `${RULES}
@@ -317,7 +321,7 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
   const messages: unknown[] = [...p.history(ctx.history), p.userMessage(`[${where}${start}]\n${ctx.message}`, ctx.photo)];
   const steps: string[] = [];
   // 1122 is Punjab's emergency service, named by the safety rule in the prompt.
-  let toolOutputs = `${env.OFFICER_PHONE} 1122\n${YIELD_CONVERSIONS}`;
+  let toolOutputs = `${env.OFFICER_PHONE} 1122\n${YIELD_CONVERSIONS}\n${VARIETY_CODES}`;
   let retried = false;
   const total: Usage = { input: 0, cached: 0, output: 0, thinking: 0 };
   const done = (r: Omit<AgentReply, 'steps'>): AgentReply => {
