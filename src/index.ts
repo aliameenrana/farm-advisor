@@ -5,7 +5,7 @@ import { transcribe } from './transcribe.js';
 import { runAgent, type AgentReply, type Photo, type Turn } from './agent.js';
 import { GUIDANCE } from './guidance.js';
 import { speak, speakCached } from './tts.js';
-import { REPLY, sourceLine } from './replies.js';
+import { FIXED, OFFICER_LINE, sourceLine, type Fixed } from './replies.js';
 import { placeName } from './weather.js';
 
 const HISTORY_TURNS = 6;
@@ -43,13 +43,12 @@ async function log(env: Env, tester: string, row: LogRow): Promise<void> {
     .run();
 }
 
-// Fixed replies only, sent from code paths the model never chooses. Workers
-// who cannot read need them spoken; the text goes too so the farm owner can
-// check it.
-async function reply(env: Env, to: string, text: string): Promise<void> {
-  await sendText(env, to, text);
-  const audio = await speakCached(env, text);
+// Fixed replies only, sent from code paths the model never chooses. Audio
+// goes first for workers who cannot read; the text follows for the owner.
+async function reply(env: Env, to: string, msg: Fixed): Promise<void> {
+  const audio = await speakCached(env, msg.spoken, 'pa');
   if (audio) await sendVoice(env, to, audio);
+  await sendText(env, to, msg.text);
 }
 
 async function handle(env: Env, msg: InboundMessage): Promise<void> {
@@ -68,7 +67,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
       .bind(tester, msg.location.latitude, msg.location.longitude, name)
       .run();
     await log(env, tester, { input: 'location', outcome: 'location_saved' });
-    return reply(env, to, REPLY.locationSaved);
+    return reply(env, to, FIXED.locationSaved);
   }
 
   let text: string | null = null;
@@ -82,7 +81,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     const minConfidence = Number(env.MIN_CONFIDENCE ?? '-0.9');
     if (!t || t.noSpeech || !t.text || t.confidence < minConfidence) {
       await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: 'unclear_audio' });
-      return reply(env, to, REPLY.unclear);
+      return reply(env, to, FIXED.unclear);
     }
     text = transcript = t.text;
     confidence = t.confidence;
@@ -92,7 +91,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   } else if (msg.type === 'text' && msg.text) {
     text = msg.text.body.slice(0, 1500);
   } else {
-    return reply(env, to, REPLY.unsupported);
+    return reply(env, to, FIXED.unsupported);
   }
 
   const input = msg.type === 'audio' ? 'voice' : msg.type;
@@ -112,25 +111,25 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     ans = await runAgent(env, { history: past, message, photo, location });
   } catch (err) {
     console.error('agent failed', err);
-    const out = photo ? REPLY.photo(env.OFFICER_PHONE) : REPLY.unknown(env.OFFICER_PHONE);
-    await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out });
+    const out = photo ? FIXED.photo(env.OFFICER_PHONE) : FIXED.unknown(env.OFFICER_PHONE);
+    await log(env, tester, { input, transcript, confidence, outcome: `fallback: ${String(err).slice(0, 200)}`, reply: out.text });
     return reply(env, to, out);
   }
 
   const sources = GUIDANCE.filter((c) => ans.citations.some((x) => x.chunk_id === c.id));
   const parts = [ans.text.trim()];
-  if (ans.needs_officer || photo) parts.push(REPLY.officer(env.OFFICER_PHONE));
+  if (ans.needs_officer || photo) parts.push(OFFICER_LINE.urdu(env.OFFICER_PHONE));
   const spoken = parts.join(' ');
   // The source line goes in the text only; read aloud it would be noise.
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
-  await sendText(env, to, written);
   const punjabi =
     ans.spoken_language === 'pa' && ans.spoken_text?.trim()
-      ? [ans.spoken_text.trim(), ...(ans.needs_officer || photo ? [REPLY.officerPunjabi(env.OFFICER_PHONE)] : [])].join(' ')
+      ? [ans.spoken_text.trim(), ...(ans.needs_officer || photo ? [OFFICER_LINE.punjabi(env.OFFICER_PHONE)] : [])].join(' ')
       : undefined;
   const audio = await speak(env, spoken, ans.tone, punjabi);
   if (audio) await sendVoice(env, to, audio);
+  await sendText(env, to, written);
 
   await env.DB.batch([
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'user', message),
@@ -186,7 +185,7 @@ export default {
           await handle(env, job.body);
         } catch (err) {
           console.error('handle failed', err);
-          await reply(env, job.body.from, REPLY.error).catch(() => undefined);
+          await reply(env, job.body.from, FIXED.error).catch(() => undefined);
         }
         job.ack();
       }),

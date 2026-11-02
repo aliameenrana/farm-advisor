@@ -118,7 +118,7 @@ export async function speak(env: Env, text: string, tone?: Tone, punjabi?: strin
 
 // Only fixed replies go through here. Their words never change, so each
 // is synthesised once per voice setting and replayed from D1 after that.
-export async function speakCached(env: Env, text: string): Promise<Speech | null> {
+export async function speakCached(env: Env, text: string, lang: 'ur' | 'pa' = 'ur'): Promise<Speech | null> {
   const config = env.TTS_PROVIDER === 'azure' ? 'azure:ur-PK-AsadNeural' : `gemini:${env.GEMINI_TTS_MODEL}:${env.GEMINI_TTS_VOICE}`;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${config}\n${text}`));
   const key = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -128,7 +128,7 @@ export async function speakCached(env: Env, text: string): Promise<Speech | null
     const bytes = hit.audio instanceof ArrayBuffer ? hit.audio : new Uint8Array(hit.audio).buffer;
     return { bytes, mime: hit.mime };
   }
-  const speech = await speak(env, text);
+  const speech = lang === 'pa' ? await speak(env, text, 'warm', text) : await speak(env, text);
   if (speech) {
     await env.DB.prepare('INSERT OR REPLACE INTO tts_cache (key, mime, audio) VALUES (?,?,?)')
       .bind(key, speech.mime, speech.bytes)
