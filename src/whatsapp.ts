@@ -6,7 +6,7 @@ async function post(env: Env, to: string, message: Record<string, unknown>): Pro
   const res = await fetch(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', to, ...message }),
+    body: JSON.stringify({ messaging_product: 'whatsapp', ...(to ? { to } : {}), ...message }),
   });
   if (!res.ok) console.error('whatsapp send failed', res.status, await res.text());
   return res.ok;
