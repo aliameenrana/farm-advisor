@@ -44,6 +44,12 @@ describe('verifyReply', () => {
     expect(verifyReply({ text: 'پیداوار 25.8 ٹن فی ہیکٹر ہے۔', citations: cite('Average yield 25.8 tonnes per hectare') }, chunks, '').ok).toBe(true);
   });
 
+  it('reads Gurmukhi digits, so a wrong number in the Punjabi version is caught', () => {
+    const quote = cite('Average yield 25.8 tonnes per hectare');
+    expect(verifyReply({ text: 'ਪੈਦਾਵਾਰ ੨੫.੮ ਟਨ', citations: quote }, chunks, '').ok).toBe(true);
+    expect(verifyReply({ text: 'ਪੈਦਾਵਾਰ ੩੫.੮ ਟਨ', citations: quote }, chunks, '').ok).toBe(false);
+  });
+
   it('accepts numbers from a tool result such as the forecast', () => {
     expect(verifyReply({ text: 'کل بارش کا امکان 70 فیصد ہے۔', citations: [] }, chunks, '2026-11-03: 14–24°C, rain 3 mm (chance 70%)').ok).toBe(true);
   });

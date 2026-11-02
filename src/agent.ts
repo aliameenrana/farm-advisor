@@ -19,12 +19,16 @@ export interface Citation {
 
 export type Tone = 'cheerful' | 'warm' | 'calm' | 'concerned' | 'urgent';
 
+type AgentReplyInput = Omit<AgentReply, 'steps'>;
+
 export interface AgentReply {
   text: string;
   citations: Citation[];
   topic: string;
   needs_officer: boolean;
   tone?: Tone;
+  spoken_language?: 'ur' | 'pa';
+  spoken_text?: string;
   steps: string[];
 }
 
@@ -57,6 +61,12 @@ Situations you will meet (not a complete list; use judgment)
 - Frustration or complaints: acknowledge it in a few words, then help.
 - Energy: match the person's mood. An excited greeting ("assalamoalaikuuuum!!") gets an equally happy, lively reply; a tired or worried message gets a calm, gentle one. Never match anger or rudeness: stay calm and kind. Emergencies are always calm and urgent, never cheerful. Always respectful; many farmers are elders. Pick tone to match.
 - Units: guidance uses tonnes per hectare. Farmers think in acres and maunds; convert only when they ask for acres or maunds, always with convert_units (t_per_ha to maund_per_acre), all values in one call, and say it is a conversion. A question about yield alone is answered in the guidance's own units.
+
+Language
+- Reply in the language they used. Transcripts of Punjabi voice notes come out in Urdu script with Punjabi words (ڈی، کیہڑی، اے، دا، نوں، لئی، چنگی), so judge by the words, not the script.
+- Urdu message: spoken_language "ur", and spoken_text is empty.
+- Punjabi message: spoken_language "pa", and spoken_text is the same reply in natural spoken Punjabi as in Gujranwala (Majhi), written in Gurmukhi script so the voice can read it. Same facts, same numbers as text, nothing added.
+- text is always Urdu, for the farm owner to read.
 
 How to speak
 - Simple spoken Urdu in Urdu script, the way you would talk to a farmer in person. Short sentences, 1 to 4 of them. No lists, no symbols, no English words if an Urdu one exists. Numbers as digits.
@@ -100,7 +110,7 @@ const TOOLS: ToolDef[] = [
     schema: {
       type: 'object',
       additionalProperties: false,
-      required: ['text', 'citations', 'topic', 'needs_officer', 'tone'],
+      required: ['text', 'citations', 'topic', 'needs_officer', 'tone', 'spoken_language', 'spoken_text'],
       properties: {
         text: { type: 'string', description: 'Spoken Urdu reply.' },
         citations: {
@@ -117,6 +127,8 @@ const TOOLS: ToolDef[] = [
           description: 'Short label for the log, e.g. variety, sowing, weather, greeting, out_of_scope, clarify.',
         },
         needs_officer: { type: 'boolean' },
+        spoken_language: { type: 'string', enum: ['ur', 'pa'] },
+        spoken_text: { type: 'string', description: 'Gurmukhi Punjabi version of text when spoken_language is pa, else empty.' },
         tone: { type: 'string', enum: ['cheerful', 'warm', 'calm', 'concerned', 'urgent'], description: 'How the reply should sound when spoken.' },
       },
     },
@@ -310,8 +322,12 @@ async function runOnce(env: Env, p: Provider, ctx: AgentContext): Promise<AgentR
     for (const call of calls) {
       steps.push(call.name);
       if (call.name === 'reply') {
-        const input = call.input as { text: string; citations: Citation[]; topic: string; needs_officer: boolean; tone?: Tone };
-        const check = verifyReply(input, GUIDANCE, toolOutputs);
+        const input = call.input as AgentReplyInput;
+        const check = verifyReply(
+          { text: `${input.text}\n${input.spoken_language === 'pa' ? (input.spoken_text ?? '') : ''}`, citations: input.citations },
+          GUIDANCE,
+          toolOutputs,
+        );
         if (check.ok) return done(input);
         if (retried) throw new Error(`reply rejected twice: ${check.reason}`);
         retried = true;

@@ -125,7 +125,11 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const written = sources.length ? `${spoken}\n\n${sourceLine(sources)}` : spoken;
 
   await sendText(env, to, written);
-  const audio = await speak(env, spoken, ans.tone);
+  const punjabi =
+    ans.spoken_language === 'pa' && ans.spoken_text?.trim()
+      ? [ans.spoken_text.trim(), ...(ans.needs_officer || photo ? [REPLY.officerPunjabi(env.OFFICER_PHONE)] : [])].join(' ')
+      : undefined;
+  const audio = await speak(env, spoken, ans.tone, punjabi);
   if (audio) await sendVoice(env, to, audio);
 
   await env.DB.batch([
