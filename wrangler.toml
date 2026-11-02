@@ -12,7 +12,7 @@ ANSWER_MODEL = "openai/gpt-oss-120b"
 CLAUDE_MODEL = "claude-sonnet-5-5"
 GEMINI_MODEL = "gemini-flash-latest"
 OFFICER_PHONE = "+920000000000"
-AZURE_SPEECH_REGION = "southeastasia"
+AZURE_SPEECH_REGION = "qatarcentral"
 
 [[d1_databases]]
 binding = "DB"
