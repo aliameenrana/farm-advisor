@@ -4,7 +4,13 @@ CREATE TABLE IF NOT EXISTS testers (
   lon REAL,
   place TEXT,
   -- Language of the farmer's last message, so fixed replies match it.
-  lang TEXT
+  lang TEXT,
+  -- Rolling summary of messages older than the history window, and the last
+  -- messages.id folded into it. Existing databases get these from migrations/.
+  summary TEXT,
+  summarized_upto INTEGER NOT NULL DEFAULT 0,
+  -- Voice notes in a row that could not be understood.
+  unclear_streak INTEGER NOT NULL DEFAULT 0
 );
 
 -- Meta redelivers a webhook it thinks failed; this stops a second answer.

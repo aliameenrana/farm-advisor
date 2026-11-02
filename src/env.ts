@@ -8,6 +8,7 @@ export interface Env {
   GROQ_API_KEY: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  GEMINI_SUMMARY_MODEL?: string;
   // Salt for hashing phone numbers so the log never holds a raw number.
   TESTER_SALT: string;
   OFFICER_PHONE: string;

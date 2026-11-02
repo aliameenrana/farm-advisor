@@ -8,10 +8,18 @@ import { speak, speakCached } from './tts.js';
 import { FIXED, OFFICER_LINE, sourceLine, type Fixed, type Lang } from './replies.js';
 import { placeName } from './weather.js';
 import { pakistaniPunjabi } from './punjabi.js';
+import { compact, HISTORY_MESSAGES, pendingCompaction } from './memory.js';
 
-const HISTORY_TURNS = 6;
+// Per-farmer caps so one number cannot run through the model budget.
+const PER_HOUR = 30;
+const PER_DAY = 150;
+// WhatsApp voice notes are Opus at roughly 16 kbit/s, so this is about two minutes.
+const MAX_VOICE_BYTES = 250_000;
+
+type Job = InboundMessage | { kind: 'compact'; tester: string };
 
 interface InboundMessage {
+  kind?: undefined;
   id: string;
   from: string;
   type: string;
@@ -78,6 +86,20 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   const known = await env.DB.prepare('SELECT lang FROM testers WHERE tester_hash = ?').bind(tester).first<{ lang: string | null }>();
   const lang: Lang = known?.lang === 'pa' ? 'pa' : 'ur';
 
+  const usage = await env.DB.prepare(
+    `SELECT sum(at > datetime('now', '-1 hour')) AS hour, count(*) AS day,
+            (SELECT outcome FROM log WHERE tester_hash = ?1 ORDER BY id DESC LIMIT 1) AS last
+       FROM log WHERE tester_hash = ?1 AND at > datetime('now', '-1 day') AND input <> 'delivery'`,
+  )
+    .bind(tester)
+    .first<{ hour: number | null; day: number; last: string | null }>();
+  if ((usage?.hour ?? 0) >= PER_HOUR || (usage?.day ?? 0) >= PER_DAY) {
+    await log(env, tester, { input: msg.type, outcome: 'rate_limited' });
+    // One notice per burst; after that the extra messages are dropped quietly.
+    if (usage?.last !== 'rate_limited') await reply(env, to, FIXED.slowDown, lang, false);
+    return;
+  }
+
   if (msg.type === 'location' && msg.location) {
     const name = await placeName(msg.location.latitude, msg.location.longitude).catch(() => null);
     await env.DB.prepare(
@@ -97,11 +119,21 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   if (msg.type === 'audio' && msg.audio) {
     const media = await downloadMedia(env, msg.audio.id);
     if (!media) throw new Error('voice note download failed');
+    if (media.bytes.byteLength > MAX_VOICE_BYTES) {
+      await log(env, tester, { input: 'voice', outcome: `too_long: ${media.bytes.byteLength} bytes` });
+      return reply(env, to, FIXED.tooLong, lang, true);
+    }
     const t = await transcribe(env, media.bytes);
     const minConfidence = Number(env.MIN_CONFIDENCE ?? '-0.9');
     if (!t || t.noSpeech || !t.text || t.confidence < minConfidence) {
-      await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: 'unclear_audio' });
-      return reply(env, to, FIXED.unclear, lang, true);
+      const streak = await env.DB.prepare(
+        'INSERT INTO testers (tester_hash, unclear_streak) VALUES (?, 1) ON CONFLICT(tester_hash) DO UPDATE SET unclear_streak = unclear_streak + 1 RETURNING unclear_streak',
+      )
+        .bind(tester)
+        .first<{ unclear_streak: number }>();
+      const again = (streak?.unclear_streak ?? 1) >= 2;
+      await log(env, tester, { input: 'voice', transcript: t?.text, confidence: t?.confidence, outcome: again ? 'unclear_audio_again' : 'unclear_audio' });
+      return reply(env, to, again ? FIXED.typeIt(env.OFFICER_PHONE) : FIXED.unclear, lang, true);
     }
     text = transcript = t.text;
     confidence = t.confidence;
@@ -117,20 +149,20 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
   }
 
   const input = msg.type === 'audio' ? 'voice' : msg.type;
-  const place = await env.DB.prepare('SELECT lat, lon, place FROM testers WHERE tester_hash = ?')
+  const place = await env.DB.prepare('SELECT lat, lon, place, summary FROM testers WHERE tester_hash = ?')
     .bind(tester)
-    .first<{ lat: number | null; lon: number | null; place: string | null }>();
+    .first<{ lat: number | null; lon: number | null; place: string | null; summary: string | null }>();
   const location = place?.lat != null && place.lon != null ? { lat: place.lat, lon: place.lon, name: place.place } : null;
   const { results: past } = await env.DB.prepare(
     'SELECT role, content FROM (SELECT id, role, content FROM messages WHERE tester_hash = ? ORDER BY id DESC LIMIT ?) ORDER BY id',
   )
-    .bind(tester, HISTORY_TURNS)
+    .bind(tester, HISTORY_MESSAGES)
     .all<Turn>();
   const message = text ?? '(photo with no caption)';
 
   let ans: AgentReply;
   try {
-    ans = await runAgent(env, { history: past, message, photo, location });
+    ans = await runAgent(env, { history: past, message, photo, location, memory: place?.summary });
   } catch (err) {
     console.error('agent failed', err);
     const out = photo ? FIXED.photo(env.OFFICER_PHONE) : FIXED.unknown(env.OFFICER_PHONE);
@@ -158,7 +190,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
 
   await env.DB.batch([
     env.DB.prepare(
-      'INSERT INTO testers (tester_hash, lang) VALUES (?, ?) ON CONFLICT(tester_hash) DO UPDATE SET lang = excluded.lang',
+      'INSERT INTO testers (tester_hash, lang) VALUES (?, ?) ON CONFLICT(tester_hash) DO UPDATE SET lang = excluded.lang, unclear_streak = 0',
     ).bind(tester, ans.spoken_language === 'pa' ? 'pa' : 'ur'),
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'user', message),
     env.DB.prepare('INSERT INTO messages (tester_hash, role, content) VALUES (?,?,?)').bind(tester, 'assistant', ans.text),
@@ -172,6 +204,7 @@ async function handle(env: Env, msg: InboundMessage): Promise<void> {
     sources: [ans.steps.join('>'), sources.map((x) => x.id).join(',')].filter(Boolean).join(' | '),
     reply: punjabi ? `${written}\n[voice] ${punjabi}` : written,
   });
+  if (await pendingCompaction(env, tester)) await env.JOBS.send({ kind: 'compact', tester });
 }
 
 export default {
@@ -212,11 +245,21 @@ export default {
   // so each answer sees the one before it in history and replies arrive in
   // the order asked. Failures are answered and acked rather than retried:
   // seen_messages would skip a retry anyway.
-  async queue(batch: MessageBatch<InboundMessage>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<Job>, env: Env): Promise<void> {
     const bySender = new Map<string, Message<InboundMessage>[]>();
-    for (const job of batch.messages) bySender.set(job.body.from, [...(bySender.get(job.body.from) ?? []), job]);
-    await Promise.all(
-      [...bySender.values()].map(async (jobs) => {
+    const compactions: Promise<void>[] = [];
+    for (const job of batch.messages) {
+      const body = job.body;
+      if (body.kind === 'compact') {
+        // Losing a summary only means the bot remembers less; it is logged, not retried.
+        compactions.push(compact(env, body.tester).catch((err) => console.error('compaction failed', err)).then(() => job.ack()));
+        continue;
+      }
+      bySender.set(body.from, [...(bySender.get(body.from) ?? []), job as Message<InboundMessage>]);
+    }
+    await Promise.all([
+      ...compactions,
+      ...[...bySender.values()].map(async (jobs) => {
         for (const job of jobs) {
           try {
             await handle(env, job.body);
@@ -236,6 +279,6 @@ export default {
           job.ack();
         }
       }),
-    );
+    ]);
   },
 };

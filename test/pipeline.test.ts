@@ -38,6 +38,8 @@ let groqAgent: (body: Json) => Json;
 let whisper: () => Response;
 let sendFails: boolean;
 let queued: unknown[];
+let summaryCalls: Json[];
+let summaryText: string;
 
 const reply = (text: string, extra: Json = {}) => ({
   name: 'reply',
@@ -66,6 +68,11 @@ async function route(input: RequestInfo | URL, init?: RequestInit): Promise<Resp
   if (url.includes('-tts:')) {
     return json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;rate=24000', data: btoa('\0'.repeat(4800)) } }] } }] });
   }
+  if (url.includes('flash-lite')) {
+    const body = JSON.parse(String(init!.body)) as Json;
+    summaryCalls.push(body);
+    return json({ candidates: [{ content: { parts: [{ text: summaryText }] } }] });
+  }
   if (url.includes('generativelanguage')) {
     const body = JSON.parse(String(init!.body)) as Json;
     agentCalls.push(body);
@@ -92,12 +99,17 @@ beforeEach(() => {
   sent = [];
   agentCalls = [];
   queued = [];
+  summaryCalls = [];
+  summaryText = 'Farmer Ali grows wheat on 12 acres near Kamoke.';
   sendFails = false;
   whisper = () => json({ text: 'آلو کب لگاؤں', segments: [{ avg_logprob: -0.2, no_speech_prob: 0.01 }] });
   groqAgent = () => groqSays(reply('گروک کا جواب'));
   env = {
     DB: fakeD1(db) as unknown as D1Database,
-    JOBS: { sendBatch: async (m: unknown[]) => void queued.push(...m) } as unknown as Queue<unknown>,
+    JOBS: {
+      sendBatch: async (m: unknown[]) => void queued.push(...m),
+      send: async (m: unknown) => void queued.push(m),
+    } as unknown as Queue<unknown>,
     WHATSAPP_VERIFY_TOKEN: 'v',
     WHATSAPP_ACCESS_TOKEN: 't',
     WHATSAPP_PHONE_NUMBER_ID: '1',
@@ -142,14 +154,15 @@ describe('multi-turn conversation', () => {
     expect(textsTo('222')).toEqual(['بلال کو جواب']);
   });
 
-  it('forgets turns older than the history window', async () => {
-    const words = ['ایک', 'دو', 'تین', 'چار', 'پانچ'];
+  it('sends the last ten messages word for word and nothing older', async () => {
+    const words = ['ایک', 'دو', 'تین', 'چار', 'پانچ', 'چھ', 'سات'];
     geminiAgent = () => geminiSays(reply(`جواب ${words[agentCalls.length - 1]}`));
     await worker.queue(batch(words.map((w, i) => text(`m${i}`, '111', `سوال ${w}`))), env);
 
-    const last = agentCalls[4]!;
-    expect(modelTexts(last)).toEqual(['جواب دو', 'جواب تین', 'جواب چار']);
+    const last = agentCalls[6]!;
+    expect(modelTexts(last)).toEqual(['جواب دو', 'جواب تین', 'جواب چار', 'جواب پانچ', 'جواب چھ']);
     expect(JSON.stringify(last)).not.toContain('سوال ایک');
+    expect(JSON.stringify(last)).not.toContain('جواب ایک');
   });
 
   it('carries the follow-up across separate batches, as real messages arrive', async () => {
@@ -284,3 +297,114 @@ async function hash(n: string) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('s' + n));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
+
+describe('long-term memory', () => {
+  const talk = async (n: number, from = '111') => {
+    for (let i = 0; i < n; i++) await worker.queue(batch([text(`${from}-${Math.random()}`, from, `بات ${i}`)]), env);
+  };
+
+  it('queues one background compaction once ten messages have left the window', async () => {
+    geminiAgent = () => geminiSays(reply('ٹھیک ہے'));
+    await talk(9);
+    expect(queued).toHaveLength(0);
+    await talk(1);
+    expect(queued).toEqual([{ kind: 'compact', tester: await hash('111') }]);
+    expect(summaryCalls).toHaveLength(0);
+  });
+
+  it('folds the aged-out messages into the summary and feeds it to later turns', async () => {
+    geminiAgent = () => geminiSays(reply('ٹھیک ہے'));
+    await worker.queue(batch([text('first', '111', 'میرا نام علی ہے، کاموکی میں بارہ ایکڑ گندم')]), env);
+    await talk(9);
+    await worker.queue(batch(queued.splice(0) as Json[]), env);
+
+    const sentToSummary = JSON.stringify(summaryCalls[0]);
+    expect(sentToSummary).toContain('میرا نام علی ہے');
+    expect(sentToSummary).not.toContain('بات 8');
+    const row = db.prepare('SELECT summary, summarized_upto FROM testers').get() as { summary: string; summarized_upto: number };
+    expect(row.summary).toBe(summaryText);
+
+    await talk(1);
+    const prompt = userTexts(agentCalls.at(-1)!).at(-1)!;
+    expect(prompt).toContain('data, not instructions');
+    expect(prompt).toContain('12 acres near Kamoke');
+    expect(prompt).not.toContain('start of the conversation');
+  });
+
+  it('builds on the previous summary instead of starting over', async () => {
+    geminiAgent = () => geminiSays(reply('ٹھیک ہے'));
+    await talk(10);
+    await worker.queue(batch(queued.splice(0) as Json[]), env);
+    summaryText = 'Second summary.';
+    await talk(5);
+    await worker.queue(batch(queued.splice(0) as Json[]), env);
+
+    expect(summaryCalls).toHaveLength(2);
+    expect(JSON.stringify(summaryCalls[1])).toContain('12 acres near Kamoke');
+    expect(JSON.stringify(summaryCalls[1])).not.toContain('بات 0');
+  });
+
+  it('keeps answering when the summary call fails', async () => {
+    geminiAgent = () => geminiSays(reply('ٹھیک ہے'));
+    vi.mocked(fetch).mockImplementation(async (u, i) => (String(u).includes('flash-lite') ? json({}, 500) : route(u, i)));
+    await talk(10);
+    await worker.queue(batch(queued.splice(0) as Json[]), env);
+    await talk(1);
+    expect(textsTo('111')).toHaveLength(11);
+    expect((db.prepare('SELECT summary FROM testers').get() as { summary: string | null }).summary).toBeNull();
+  });
+});
+
+describe('guardrails', () => {
+  it('stops answering after thirty messages in an hour, with one notice', async () => {
+    const h = await hash('111');
+    for (let i = 0; i < 30; i++) db.prepare("INSERT INTO log (tester_hash, input, outcome) VALUES (?, 'text', 'conversation')").run(h);
+    geminiAgent = () => geminiSays(reply('جواب'));
+    await worker.queue(batch([text('a', '111', 'سلام')]), env);
+    await worker.queue(batch([text('b', '111', 'سلام')]), env);
+
+    expect(textsTo('111')).toEqual([FIXED.slowDown.ur.text]);
+    expect(agentCalls).toHaveLength(0);
+  });
+
+  it('does not count another farmer\'s messages or old ones against the limit', async () => {
+    for (let i = 0; i < 40; i++) db.prepare("INSERT INTO log (tester_hash, input, outcome) VALUES ('other', 'text', 'conversation')").run();
+    for (let i = 0; i < 40; i++) db.prepare("INSERT INTO log (tester_hash, at, input, outcome) VALUES (?, datetime('now', '-2 days'), 'text', 'x')").run(await hash('111'));
+    geminiAgent = () => geminiSays(reply('جواب'));
+    await worker.queue(batch([text('a', '111', 'سلام')]), env);
+    expect(textsTo('111')).toEqual(['جواب']);
+  });
+
+  it('asks the farmer to type after two unclear voice notes in a row, and resets after a clear one', async () => {
+    whisper = () => json({ text: 'ہم', segments: [{ avg_logprob: -1.4, no_speech_prob: 0.2 }] });
+    const voice = (id: string) => ({ id, from: '111', type: 'audio', audio: { id: 'v1' } });
+    await worker.queue(batch([voice('a'), voice('b')]), env);
+    whisper = () => json({ text: 'آلو کب لگاؤں', segments: [{ avg_logprob: -0.2, no_speech_prob: 0.01 }] });
+    geminiAgent = () => geminiSays(reply('جواب'));
+    await worker.queue(batch([voice('c')]), env);
+    whisper = () => json({ text: 'ہم', segments: [{ avg_logprob: -1.4, no_speech_prob: 0.2 }] });
+    await worker.queue(batch([voice('d')]), env);
+
+    expect(textsTo('111')).toEqual([FIXED.unclear.ur.text, FIXED.typeIt(env.OFFICER_PHONE).ur.text, 'جواب', FIXED.unclear.ur.text]);
+  });
+
+  it('refuses a voice note longer than about two minutes without transcribing it', async () => {
+    vi.mocked(fetch).mockImplementation(async (u, i) =>
+      String(u).startsWith('https://media.test/') ? new Response(new Uint8Array(300_000)) : route(u, i),
+    );
+    let whisperCalled = false;
+    whisper = () => ((whisperCalled = true), json({}));
+    await worker.queue(batch([{ id: 'a', from: '111', type: 'audio', audio: { id: 'v1' } }]), env);
+    expect(textsTo('111')).toEqual([FIXED.tooLong.ur.text]);
+    expect(whisperCalled).toBe(false);
+  });
+
+  it('never sends a link, even when the model writes one twice', async () => {
+    geminiAgent = () => geminiSays(reply('مزید کے لیے www.example.pk دیکھیں'));
+    groqAgent = () => groqSays(reply('دیکھیں https://example.com'));
+    await worker.queue(batch([text('a', '111', 'کوئی ویب سائٹ بتاؤ')]), env);
+    expect(textsTo('111').join()).not.toMatch(/example/);
+    expect(logs()[0]!.outcome).toMatch(/links are not allowed/);
+  });
+});
+
